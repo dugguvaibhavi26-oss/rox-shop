@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #0F172A;
+    
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+    
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+    
+    --primary: #1E3A8A;
+    --primary-foreground: #FFFFFF;
+    
+    --accent: #D97706;
+    --accent-foreground: #FFFFFF;
+    
+    --muted: #F8FAFC;
+    --muted-foreground: #64748B;
+    
+    --border: #E2E8F0;
+    --input: #CBD5E1;
+    --ring: #1E3A8A;
+    
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+
+    /* Semantic Status Tokens */
+    --success: #15803D;
+    --success-light: #DCFCE7;
+    --warning: #B45309;
+    --warning-light: #FEF3C7;
+    --error: #B91C1C;
+    --error-light: #FEE2E2;
+    --info: #0369A1;
+    --info-light: #E0F2FE;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Noto Sans Devanagari", "Noto Sans Telugu", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+}
+
+/* Enforce 44px minimum touch targets on mobile interactive controls */
+@media (max-width: 640px) {
+  button, input, select, [role="button"], a {
+    min-height: 44px;
+  }
+}
