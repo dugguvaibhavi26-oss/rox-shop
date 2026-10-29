@@ -18,8 +18,8 @@ export default function ErrorPage({
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8FAFC]">
-      <div className="max-w-md w-full p-8 rounded-3xl border border-[#E2E8F0] bg-white text-center shadow-lg">
-        <div className="w-14 h-14 rounded-2xl bg-[#FEE2E2] text-[#B91C1C] flex items-center justify-center mx-auto mb-4">
+      <div className="max-w-md w-full p-8 rounded-lg border border-[#E2E8F0] bg-white text-center shadow-lg">
+        <div className="w-14 h-14 rounded-md bg-[#FEE2E2] text-[#B91C1C] flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="w-7 h-7" />
         </div>
         <h2 className="text-xl font-bold text-[#0F172A]">Something went wrong</h2>

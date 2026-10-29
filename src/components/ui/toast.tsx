@@ -43,7 +43,7 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex items-start gap-3 p-4 rounded-2xl border shadow-lg max-w-sm w-full transition-all duration-200",
+        "flex items-start gap-3 p-4 rounded-lg border shadow-lg max-w-sm w-full transition-all duration-200",
         borders[type]
       )}
     >

@@ -33,7 +33,7 @@ export function ResponsiveTable<T extends Record<string, any>>({
   return (
     <div className={cn("w-full", className)}>
       {/* Desktop & Tablet Table (Hidden below sm: 640px) */}
-      <div className="hidden sm:block overflow-x-auto rounded-2xl border border-[#E2E8F0] bg-white">
+      <div className="hidden sm:block overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
@@ -75,7 +75,7 @@ export function ResponsiveTable<T extends Record<string, any>>({
             key={keyExtractor(row)}
             onClick={() => onRowClick?.(row)}
             className={cn(
-              "rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs flex flex-col gap-2.5 text-left",
+              "rounded-lg border border-[#E2E8F0] bg-white p-4 shadow-2xs flex flex-col gap-2.5 text-left",
               onRowClick && "active:bg-[#F8FAFC] cursor-pointer"
             )}
           >

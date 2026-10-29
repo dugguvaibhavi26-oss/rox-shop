@@ -16,7 +16,7 @@ if (
 export const siteConfig = {
   // Brand & Domain placeholders (overridable via environment variables)
   name: process.env.NEXT_PUBLIC_APP_NAME || "Shopper",
-  domain: process.env.NEXT_PUBLIC_APP_DOMAIN || "shopper.site",
+  domain: process.env.NEXT_PUBLIC_APP_DOMAIN || "shopper.in",
   url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   description: "The modern store builder for Indian social sellers.",
 
@@ -40,3 +40,19 @@ export const siteConfig = {
 };
 
 export type SiteConfig = typeof siteConfig;
+
+/**
+ * Returns the public store domain e.g. "storename.shopper.in" or "storename.oursite.in"
+ */
+export function getStoreDomain(subdomain: string): string {
+  const baseDomain = siteConfig.domain;
+  return `${subdomain}.${baseDomain}`;
+}
+
+/**
+ * Returns the full HTTPS store URL e.g. "https://storename.shopper.in"
+ */
+export function getStoreUrl(subdomain: string): string {
+  return `https://${getStoreDomain(subdomain)}`;
+}
+

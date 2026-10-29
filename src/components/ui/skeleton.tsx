@@ -12,7 +12,7 @@ export function Skeleton({
 }: SkeletonProps) {
   const variantStyles = {
     text: "h-4 w-full rounded-md",
-    rectangular: "rounded-xl",
+    rectangular: "rounded-md",
     circular: "rounded-full",
   };
 
@@ -33,12 +33,12 @@ export function Skeleton({
  */
 export function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-2xl border border-[#E2E8F0] bg-white p-3 gap-3">
-      <Skeleton className="w-full aspect-square rounded-xl" />
+    <div className="flex flex-col rounded-lg border border-[#E2E8F0] bg-white p-3 gap-3">
+      <Skeleton className="w-full aspect-square rounded-md" />
       <Skeleton variant="text" className="w-3/4 h-4" />
       <div className="flex items-center justify-between mt-1">
         <Skeleton variant="text" className="w-1/3 h-4" />
-        <Skeleton className="w-8 h-8 rounded-lg" />
+        <Skeleton className="w-8 h-8 rounded-md" />
       </div>
     </div>
   );

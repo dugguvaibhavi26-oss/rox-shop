@@ -26,7 +26,7 @@ export function ShareCard({ storeName, storeUrl, className }: ShareCardProps) {
   return (
     <div
       className={cn(
-        "rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm flex flex-col gap-5 text-left max-w-sm w-full mx-auto",
+        "rounded-lg border border-[#E2E8F0] bg-white p-6 shadow-sm flex flex-col gap-5 text-left max-w-sm w-full mx-auto",
         className
       )}
     >
@@ -35,14 +35,14 @@ export function ShareCard({ storeName, storeUrl, className }: ShareCardProps) {
           <h3 className="text-base font-bold text-[#0F172A]">Share Your Store</h3>
           <p className="text-xs text-[#64748B] mt-0.5">Let your buyers shop directly</p>
         </div>
-        <div className="w-9 h-9 rounded-xl bg-[#EFF6FF] text-[#1E3A8A] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-md bg-[#EFF6FF] text-[#1E3A8A] flex items-center justify-center">
           <Share2 className="w-4 h-4" />
         </div>
       </div>
 
       {/* SVG QR Code Simulation */}
-      <div className="flex flex-col items-center justify-center p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] gap-3">
-        <div className="w-32 h-32 bg-white p-2.5 rounded-xl border border-[#CBD5E1] shadow-2xs flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center p-5 bg-[#F8FAFC] rounded-md border border-[#E2E8F0] gap-3">
+        <div className="w-32 h-32 bg-white p-2.5 rounded-md border border-[#CBD5E1] shadow-2xs flex items-center justify-center">
           {/* Crisp, clean SVG QR visual */}
           <svg viewBox="0 0 100 100" className="w-full h-full fill-current text-[#0F172A]">
             <rect x="0" y="0" width="30" height="30" rx="4" />
@@ -74,7 +74,7 @@ export function ShareCard({ storeName, storeUrl, className }: ShareCardProps) {
       </div>
 
       {/* Store Link Input & Copy Button */}
-      <div className="flex items-center gap-2 p-1.5 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC]">
+      <div className="flex items-center gap-2 p-1.5 rounded-md border border-[#CBD5E1] bg-[#F8FAFC]">
         <span className="text-xs font-mono text-[#0F172A] truncate pl-2 flex-1">{storeUrl}</span>
         <Button
           size="sm"

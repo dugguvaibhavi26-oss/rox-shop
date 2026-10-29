@@ -80,7 +80,7 @@ export function ImageUploader({
       />
 
       {preview ? (
-        <div className={cn("relative rounded-2xl overflow-hidden border border-[#E2E8F0] group", aspectClasses[aspectRatio])}>
+        <div className={cn("relative rounded-lg overflow-hidden border border-[#E2E8F0] group", aspectClasses[aspectRatio])}>
           <img src={preview} alt="Upload preview" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <Button
@@ -114,7 +114,7 @@ export function ImageUploader({
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           className={cn(
-            "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-colors text-center min-h-[160px]",
+            "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors text-center min-h-[160px]",
             "border-[#CBD5E1] bg-[#F8FAFC] hover:bg-[#F1F5F9] hover:border-[#94A3B8]",
             disabled && "opacity-60 cursor-not-allowed hover:bg-[#F8FAFC]"
           )}
@@ -126,7 +126,7 @@ export function ImageUploader({
             </div>
           ) : (
             <>
-              <div className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] shadow-2xs flex items-center justify-center text-[#1E3A8A] mb-2">
+              <div className="w-10 h-10 rounded-md bg-white border border-[#E2E8F0] shadow-2xs flex items-center justify-center text-[#1E3A8A] mb-2">
                 <UploadCloud className="w-5 h-5" />
               </div>
               <p className="text-sm font-semibold text-[#0F172A]">Tap to upload photo</p>
@@ -139,9 +139,9 @@ export function ImageUploader({
       {/* Crop Framing Preview Modal */}
       {isCropModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl">
             <h4 className="text-base font-bold text-[#0F172A]">Adjust Framing</h4>
-            <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-[#1E3A8A] bg-black">
+            <div className="relative aspect-square rounded-md overflow-hidden border-2 border-[#1E3A8A] bg-black">
               {preview && <img src={preview} alt="Crop view" className="w-full h-full object-cover opacity-90" />}
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none border border-white/40">
                 <div className="border border-white/20" />

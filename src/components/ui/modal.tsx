@@ -55,8 +55,8 @@ export function Modal({
         className={cn(
           "relative z-50 w-full bg-white shadow-2xl transition-all duration-200 overflow-hidden",
           variant === "sheet"
-            ? "rounded-t-3xl max-h-[90vh] flex flex-col slide-in-from-bottom"
-            : "rounded-2xl sm:max-w-lg max-h-[90vh] flex flex-col scale-in-95",
+            ? "rounded-t-xl max-h-[90vh] flex flex-col slide-in-from-bottom"
+            : "rounded-lg sm:max-w-lg max-h-[90vh] flex flex-col scale-in-95",
           className
         )}
       >
@@ -76,7 +76,7 @@ export function Modal({
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 -mr-1 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              className="p-1.5 -mr-1 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />

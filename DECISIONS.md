@@ -73,3 +73,18 @@ Recorded at install time (October 2026):
 - **Color Palette & Contrast:** Curated HSL/Hex color tokens with automated WCAG 2.2 AA contrast evaluation (minimum 4.5:1 for standard text, 3:1 for large text).
 - **Mobile-First Layout:** Designed for 360 px width first (bottom navigation bar on mobile; expandable sidebar on desktop).
 - **Touch Targets:** Minimum 44x44 px touch targets for all interactive elements.
+
+---
+
+## 7. Multi-Tenant Subdomain Provisioning & Routing
+- **Subdomain Mapping:** Store URLs map to `{subdomain}.shopper.site` via Next.js Middleware/Proxy rewriting requests to `/s/[subdomain]`.
+- **Zero-Latency Tenant Resolution:** Storefront loads dynamically tailored CSS variables (`--primary`, `--accent`, etc.) based on store's active theme without client-side CSS-in-JS overhead.
+
+---
+
+## 8. Subscription Tiers & Product Quota Enforcement
+- **Free Plan:** 10 products catalog limit, default "Classic Bloom" theme, direct UPI QR & COD.
+- **Growth Plan (₹299/mo):** 50 products catalog limit, 3 designer themes (Classic, Vibrant Bazaar, Pastel Luxe), promotional hero banners, discount coupons, customer reviews moderation.
+- **Pro Plan (₹799/mo):** Unlimited products catalog, all 5 premium themes (including Midnight Noir & Artisan Craft), custom domain support, VIP WhatsApp support.
+- **Enforcement:** Dashboard enforces limits on product creation via `canAddProduct()` and theme activation via `isThemeAllowed()`, prompting an upgrade modal with instant plan activation.
+

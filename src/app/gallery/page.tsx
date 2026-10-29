@@ -109,7 +109,7 @@ export default function ComponentGalleryPage() {
 
       {/* Main Container: can simulate 360px width */}
       <div
-        className={isMobilePreview ? "max-w-[360px] mx-auto border-4 border-[#0F172A] rounded-3xl p-4 bg-white shadow-2xl overflow-hidden transition-all duration-300" : "max-w-6xl mx-auto space-y-12"}
+        className={isMobilePreview ? "max-w-[360px] mx-auto border-4 border-[#0F172A] rounded-xl p-4 bg-white shadow-2xl overflow-hidden transition-all duration-300" : "max-w-6xl mx-auto space-y-12"}
       >
         {/* Navigation Tabs */}
         <div className="mb-6">
@@ -132,7 +132,7 @@ export default function ComponentGalleryPage() {
               <span>1. Buttons</span>
               <span className="text-xs font-normal text-[#64748B]">(All states & 44px mobile touch targets)</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-6 rounded-lg border border-[#E2E8F0]">
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-[#64748B]">Primary</span>
                 <Button variant="primary">Publish Store</Button>
@@ -178,7 +178,7 @@ export default function ComponentGalleryPage() {
               <span>2. Specialized Inputs</span>
               <span className="text-xs font-normal text-[#64748B]">(Phone +91, PIN code auto-city, Rupee ₹ price)</span>
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-6 rounded-lg border border-[#E2E8F0]">
               <PhoneInput label="Indian Mobile Number" helperText="Sellers receive OTP on this number" />
               <PriceInput label="Product Selling Price" placeholder="999" helperText="Stored as 99900 paise" />
               <PinCodeInput
@@ -205,7 +205,7 @@ export default function ComponentGalleryPage() {
         {(activeTab === "all" || activeTab === "forms") && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">3. Dropdowns & Selection Controls</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-[#E2E8F0]">
               <div className="space-y-4">
                 <Select
                   label="Business Category"
@@ -269,7 +269,7 @@ export default function ComponentGalleryPage() {
         {(activeTab === "all" || activeTab === "actions") && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">4. Badges & Status Indicators</h2>
-            <div className="flex flex-wrap gap-2.5 bg-white p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="flex flex-wrap gap-2.5 bg-white p-6 rounded-lg border border-[#E2E8F0]">
               <Badge variant="success">Paid (₹799)</Badge>
               <Badge variant="warning">Awaiting UPI Check</Badge>
               <Badge variant="error">Out of Stock</Badge>
@@ -317,7 +317,7 @@ export default function ComponentGalleryPage() {
         {(activeTab === "all" || activeTab === "layout") && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">6. Stepper & Progress Tracker</h2>
-            <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] space-y-6">
+            <div className="bg-white p-6 rounded-lg border border-[#E2E8F0] space-y-6">
               <Stepper
                 currentStep={currentStep}
                 steps={[
@@ -346,7 +346,7 @@ export default function ComponentGalleryPage() {
         {(activeTab === "all" || activeTab === "forms") && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">7. Image Uploader & WCAG Contrast Color Picker</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-[#E2E8F0]">
               <ImageUploader label="Product Photo" aspectRatio="1:1" />
               <ColorPicker label="Theme Primary Color" value="#1E3A8A" />
             </div>
@@ -358,7 +358,7 @@ export default function ComponentGalleryPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">8. Reorderable Sections & Share Card with QR</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] flex flex-col gap-3">
+              <div className="bg-white p-6 rounded-lg border border-[#E2E8F0] flex flex-col gap-3">
                 <h3 className="text-sm font-bold text-[#0F172A]">Home Page Section Order</h3>
                 <p className="text-xs text-[#64748B]">Move sections up or down with touch buttons</p>
                 <ReorderList items={reorderItems} onChange={setReorderItems} />
@@ -375,7 +375,7 @@ export default function ComponentGalleryPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">9. Empty & Loading States</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0]">
+              <div className="bg-white p-4 rounded-lg border border-[#E2E8F0]">
                 <EmptyState
                   title="No orders yet"
                   description="Share your store link on your Instagram bio and WhatsApp stories to receive your first order."
@@ -385,7 +385,7 @@ export default function ComponentGalleryPage() {
                   }}
                 />
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] space-y-4">
+              <div className="bg-white p-6 rounded-lg border border-[#E2E8F0] space-y-4">
                 <span className="text-xs font-semibold text-[#0F172A]">Skeleton Placeholders</span>
                 <div className="grid grid-cols-2 gap-3">
                   <ProductCardSkeleton />
@@ -400,7 +400,7 @@ export default function ComponentGalleryPage() {
         {(activeTab === "all" || activeTab === "actions") && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-[#0F172A]">10. Modals (Bottom Sheet / Dialog) & Toasts</h2>
-            <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] flex flex-wrap gap-4 items-center">
+            <div className="bg-white p-6 rounded-lg border border-[#E2E8F0] flex flex-wrap gap-4 items-center">
               <Button
                 variant="secondary"
                 onClick={() => {
