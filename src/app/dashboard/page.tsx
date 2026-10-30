@@ -1261,7 +1261,10 @@ function DashboardPageContent() {
   const totalRevenue = store.orders.reduce((acc, o) => acc + o.total, 0);
   const totalOrders = store.orders.length;
   const totalProducts = store.products.length;
+<<<<<<< HEAD
   const totalCustomers = store.customers?.length || 0;
+=======
+>>>>>>> e4a5a15ba511a39d127b3bcbeea876793eb17992
   const liveStoreUrl = `/s/${store.subdomain}`;
   const storeWebDomain = `${store.subdomain}.${siteConfig.domain}`;
   const storePublicUrl = `https://${storeWebDomain}`;
@@ -1551,6 +1554,7 @@ function DashboardPageContent() {
 
       {/* Main Content Area (Offset by fixed sidebar on desktop) */}
       <div className="md:pl-64 flex flex-col min-h-screen">
+<<<<<<< HEAD
         {/* Mobile Fixed Top Header (Mobile Only - Matching Desktop Brand Header) */}
         <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 px-4 py-3 shrink-0 shadow-xs">
           <div className="flex items-center justify-between gap-3">
@@ -1607,6 +1611,8 @@ function DashboardPageContent() {
           </div>
         </header>
 
+=======
+>>>>>>> e4a5a15ba511a39d127b3bcbeea876793eb17992
         {/* Top Workspace Header (Matching reference mockup exactly, no coins) */}
         <header className="w-full bg-white border-b border-neutral-200/80 px-6 sm:px-10 py-7 sm:py-8 flex flex-col md:flex-row md:items-start justify-between gap-6 shrink-0">
           <div className="min-w-0">
