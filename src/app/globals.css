@@ -1,0 +1,464 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #111111;
+    
+    --card: #FFFFFF;
+    --card-foreground: #111111;
+    
+    --popover: #FFFFFF;
+    --popover-foreground: #111111;
+    
+    --primary: #111111;
+    --primary-foreground: #FFFFFF;
+    
+    --accent: #E04E39;
+    --accent-foreground: #FFFFFF;
+    
+    --muted: #F5F5F5;
+    --muted-foreground: #666666;
+    
+    --border: #E5E5E5;
+    --input: #E5E5E5;
+    --ring: #111111;
+    
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-full: 9999px;
+
+    /* Semantic Status Tokens */
+    --success: #15803D;
+    --success-light: #DCFCE7;
+    --warning: #B45309;
+    --warning-light: #FEF3C7;
+    --error: #DC2626;
+    --error-light: #FEE2E2;
+    --info: #0369A1;
+    --info-light: #E0F2FE;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  .font-serif-title {
+    font-family: "Playfair Display", "Cormorant Garamond", "Didot", "Bodoni MT", Georgia, "Times New Roman", serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Enforce 44px minimum touch targets on mobile interactive controls */
+@media (max-width: 640px) {
+  button, input, select, [role="button"], a {
+    min-height: 44px;
+  }
+}
+
+/* =========================================================================
+   LUXURY TRANSITIONS & ENTRANCE ANIMATIONS
+   Fluid spring physics, 3D perspective unfolds, elastic pops, and wave cascades
+   ========================================================================= */
+
+@keyframes enterScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.91) translateY(24px);
+    filter: blur(6px);
+  }
+  65% {
+    transform: scale(1.02) translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes enterSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(38px);
+  }
+  70% {
+    transform: translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card3dUnfold {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(16deg) translateY(45px) scale(0.92);
+    filter: blur(3px);
+  }
+  65% {
+    transform: perspective(1200px) rotateX(-2deg) translateY(-4px) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes waveSwingLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px) translateY(22px) rotate(-3deg);
+  }
+  70% {
+    transform: translateX(4px) translateY(-2px) rotate(0.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes waveSwingRight {
+  0% {
+    opacity: 0;
+    transform: translateX(40px) translateY(22px) rotate(3deg);
+  }
+  70% {
+    transform: translateX(-4px) translateY(-2px) rotate(-0.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes elasticPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(28px);
+  }
+  55% {
+    transform: scale(1.08) translateY(-6px);
+  }
+  75% {
+    transform: scale(0.97) translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes enterSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  70% {
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes enterSlideRight {
+  0% {
+    opacity: 0;
+    transform: translateX(-35px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes enterSlideLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(35px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes enterBlur {
+  0% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: scale(0.96) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes revealFlip {
+  0% {
+    opacity: 0;
+    transform: perspective(1000px) rotateX(-12deg) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0deg) translateY(0);
+  }
+}
+
+@keyframes pillPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.14);
+  }
+  85% {
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes drawerInRight {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerInLeft {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes backdropFade {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes enterFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromTop2 {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom2 {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes zoomIn95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Primary Animation Utility Classes */
+.animate-enter-scale {
+  animation: enterScale 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-enter-slide-up {
+  animation: enterSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-enter-slide-down {
+  animation: enterSlideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-enter-slide-right {
+  animation: enterSlideRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-enter-slide-left {
+  animation: enterSlideLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-enter-blur {
+  animation: enterBlur 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-reveal-flip {
+  animation: revealFlip 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pill-pop {
+  animation: pillPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-drawer-right {
+  animation: drawerInRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-drawer-left {
+  animation: drawerInLeft 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-backdrop-in {
+  animation: backdropFade 0.3s ease-out both;
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 2.5s infinite;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3s ease-in-out infinite;
+}
+
+.animate-card-3d {
+  animation: card3dUnfold 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-elastic-pop {
+  animation: elasticPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-wave-left {
+  animation: waveSwingLeft 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-wave-right {
+  animation: waveSwingRight 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger Delays for Grid / List Items */
+.stagger-1 { animation-delay: 45ms !important; }
+.stagger-2 { animation-delay: 90ms !important; }
+.stagger-3 { animation-delay: 135ms !important; }
+.stagger-4 { animation-delay: 180ms !important; }
+.stagger-5 { animation-delay: 225ms !important; }
+.stagger-6 { animation-delay: 270ms !important; }
+.stagger-7 { animation-delay: 315ms !important; }
+.stagger-8 { animation-delay: 360ms !important; }
+
+/* Interactive Micro-Interactions */
+.smooth-all {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 28px -10px rgba(0, 0, 0, 0.14);
+}
+.hover-lift:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.hover-3d-lift {
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+  will-change: transform, box-shadow;
+}
+.hover-3d-lift:hover {
+  transform: translateY(-7px) scale(1.018);
+  box-shadow: 0 24px 36px -12px rgba(0, 0, 0, 0.16), 0 8px 16px -6px rgba(0, 0, 0, 0.08);
+}
+.hover-3d-lift:active {
+  transform: translateY(-2px) scale(0.985);
+}
+
+.shimmer-card {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-180%) skewX(-20deg);
+  pointer-events: none;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.shimmer-card:hover::after {
+  transform: translateX(320%) skewX(-20deg);
+}
+
+.press-scale {
+  transition: transform 0.15s ease-out;
+}
+.press-scale:active {
+  transform: scale(0.96);
+}
+
+.theme-preview-transition {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tailwind Animate Compatibility in Tailwind v4 */
+.animate-in {
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+.fade-in {
+  animation-name: enterFade;
+}
+.slide-in-from-top-2 {
+  animation-name: slideInFromTop2;
+}
+.slide-in-from-bottom-2 {
+  animation-name: slideInFromBottom2;
+}
+.zoom-in-95 {
+  animation-name: zoomIn95;
+}
