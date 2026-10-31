@@ -6,9 +6,14 @@ export interface PlanFeature {
   tier: "free" | "starter" | "pro";
   priceMonthly: number; // in paise
   priceFormatted: string;
+<<<<<<< HEAD
   /** Pre-discount price shown struck through, in paise */
   originalPriceMonthly?: number;
   originalPriceFormatted?: string;
+=======
+  priceYearly?: number; // in paise
+  priceYearlyFormatted?: string;
+>>>>>>> 0422db4 (payments)
   maxProducts: number;
   themesAllowed: string[];
   customDomain: boolean;
@@ -45,9 +50,15 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     tier: "starter",
     priceMonthly: 29900,
     priceFormatted: "₹299 / month",
+<<<<<<< HEAD
     originalPriceMonthly: 49900,
     originalPriceFormatted: "₹499 / month",
     maxProducts: 200,
+=======
+    priceYearly: 299000,
+    priceYearlyFormatted: "₹2,990 / year",
+    maxProducts: 50,
+>>>>>>> 0422db4 (payments)
     themesAllowed: ["classic-bloom", "bento-tech", "botanical-wellness"],
     customDomain: false,
     maxBanners: 5,
@@ -66,10 +77,17 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     id: "pro",
     name: "Pro",
     tier: "pro",
+<<<<<<< HEAD
     priceMonthly: 99900,
     priceFormatted: "₹999 / month",
     originalPriceMonthly: 149900,
     originalPriceFormatted: "₹1,499 / month",
+=======
+    priceMonthly: 79900,
+    priceFormatted: "₹799 / month",
+    priceYearly: 799000,
+    priceYearlyFormatted: "₹7,990 / year",
+>>>>>>> 0422db4 (payments)
     maxProducts: 999999,
     themesAllowed: [
       "classic-bloom",
@@ -128,6 +146,85 @@ export function isThemeAllowed(themeSlug: string, planId: string = "free"): bool
 
 export function isPaidPlan(planId: string = "free"): boolean {
   return planId === "starter" || planId === "pro";
+}
+
+export type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+export interface BillingCycleOption {
+  id: BillingCycle;
+  label: string;
+  shortLabel: string;
+  months: number;
+  discountPercent: number;
+  tag: string;
+}
+
+export const BILLING_CYCLES: BillingCycleOption[] = [
+  { id: "monthly", label: "Billed Monthly", shortLabel: "Monthly", months: 1, discountPercent: 0, tag: "" },
+  { id: "quarterly", label: "Billed Quarterly", shortLabel: "Quarterly", months: 3, discountPercent: 5, tag: "Save 5%" },
+  { id: "yearly", label: "Billed Annually", shortLabel: "Annually", months: 12, discountPercent: 10, tag: "Save 10%" },
+];
+
+export interface PlanPricingBreakdown {
+  totalPaise: number;
+  totalRupees: number;
+  monthlyEquivalentRupees: number;
+  discountPercent: number;
+  savedRupees: number;
+  cycleLabel: string;
+  formattedTotal: string;
+  formattedMonthly: string;
+  billingText: string;
+}
+
+export function calculatePlanPrice(
+  planId: string,
+  cycle: BillingCycle = "monthly"
+): PlanPricingBreakdown {
+  const plan = PLATFORM_PLANS[planId] || PLATFORM_PLANS.free;
+  if (plan.priceMonthly === 0) {
+    return {
+      totalPaise: 0,
+      totalRupees: 0,
+      monthlyEquivalentRupees: 0,
+      discountPercent: 0,
+      savedRupees: 0,
+      cycleLabel: "Free forever",
+      formattedTotal: "₹0",
+      formattedMonthly: "₹0",
+      billingText: "Free forever",
+    };
+  }
+
+  const cycleConfig = BILLING_CYCLES.find((c) => c.id === cycle) || BILLING_CYCLES[0];
+  const months = cycleConfig.months;
+  const discountPercent = cycleConfig.discountPercent;
+
+  const baseMonthlyRupees = plan.priceMonthly / 100;
+  const rawBaseTotal = baseMonthlyRupees * months;
+  const discountedTotal = Math.round(rawBaseTotal * (1 - discountPercent / 100));
+  const totalPaise = discountedTotal * 100;
+  const monthlyEquivalentRupees = Math.round(discountedTotal / months);
+  const savedRupees = rawBaseTotal - discountedTotal;
+
+  let billingText = "Billed monthly";
+  if (cycle === "quarterly") {
+    billingText = `Billed quarterly (₹${discountedTotal.toLocaleString("en-IN")}/3 mos · Save 5%)`;
+  } else if (cycle === "yearly") {
+    billingText = `Billed annually (₹${discountedTotal.toLocaleString("en-IN")}/yr · Save 10%)`;
+  }
+
+  return {
+    totalPaise,
+    totalRupees: discountedTotal,
+    monthlyEquivalentRupees,
+    discountPercent,
+    savedRupees,
+    cycleLabel: cycleConfig.label,
+    formattedTotal: `₹${discountedTotal.toLocaleString("en-IN")}`,
+    formattedMonthly: `₹${monthlyEquivalentRupees.toLocaleString("en-IN")}`,
+    billingText,
+  };
 }
 
 export function canUseReviews(planId: string = "free"): boolean {

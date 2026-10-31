@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { siteConfig } from "@/lib/config/site";
+<<<<<<< HEAD
 import { PLATFORM_PLANS, planDiscountPercent } from "@/lib/plans";
+=======
+import { PLATFORM_PLANS, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
+>>>>>>> 0422db4 (payments)
 import { PLATFORM_THEMES } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import {
@@ -1282,6 +1286,8 @@ function Statement() {
 /* ------------------------------------------------------------------ */
 
 function Pricing() {
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+
   return (
     <section id="pricing" className="border-t border-neutral-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32">
@@ -1293,9 +1299,55 @@ function Pricing() {
           text="No commissions, no hidden fees. Start free and upgrade when you're ready."
         />
 
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        {/* 3-way Billing Cycle Toggle */}
+        <div className="mt-10 flex flex-col items-center justify-center gap-2">
+          <div className="inline-flex flex-wrap items-center justify-center rounded-2xl bg-neutral-100 p-1.5 text-xs font-semibold gap-1 border border-neutral-200/80 shadow-2xs">
+            {BILLING_CYCLES.map((cycle) => {
+              const isSelected = billingCycle === cycle.id;
+              return (
+                <button
+                  key={cycle.id}
+                  type="button"
+                  onClick={() => setBillingCycle(cycle.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 cursor-pointer",
+                    isSelected
+                      ? "bg-black text-white shadow-sm"
+                      : "text-neutral-600 hover:text-black hover:bg-neutral-200/50"
+                  )}
+                >
+                  <span>{cycle.label}</span>
+                  {cycle.tag && (
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+                        isSelected
+                          ? "bg-amber-400 text-black"
+                          : cycle.id === "yearly"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-blue-100 text-blue-800"
+                      )}
+                    >
+                      {cycle.tag}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-neutral-500 font-medium">
+            {billingCycle === "quarterly" && "Save 5% on 3-month commitments. Billed quarterly."}
+            {billingCycle === "yearly" && "Save 10% on annual commitments. Billed annually."}
+            {billingCycle === "monthly" && "Standard month-to-month billing. Cancel anytime."}
+          </p>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
           {Object.values(PLATFORM_PLANS).map((plan, i) => {
             const hi = !!plan.highlight;
+            const pricing = calculatePlanPrice(plan.id, billingCycle);
+            const isFree = plan.priceMonthly === 0;
+
             return (
               <Reveal
                 key={plan.id}
@@ -1311,13 +1363,18 @@ function Pricing() {
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold">{plan.name}</h3>
-                  {hi && (
+                  {hi ? (
                     <span className="relative rounded-[7px] bg-white text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-1">
                       Best value
                     </span>
-                  )}
+                  ) : pricing.discountPercent > 0 ? (
+                    <span className="relative rounded-[7px] bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1">
+                      Save {pricing.discountPercent}%
+                    </span>
+                  ) : null}
                 </div>
                 <p className={cn("mt-2 text-sm", hi ? "text-neutral-400" : "text-neutral-600")}>{plan.description}</p>
+<<<<<<< HEAD
                 <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="text-5xl font-semibold tracking-tighter">{plan.priceFormatted.split(" ")[0]}</span>
                   {plan.originalPriceFormatted && (
@@ -1326,6 +1383,21 @@ function Pricing() {
                     </span>
                   )}
                   <span className={cn("text-sm", hi ? "text-neutral-400" : "text-neutral-500")}>/month</span>
+=======
+                
+                <div className="mt-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-semibold tracking-tighter">
+                      {isFree ? "₹0" : pricing.formattedMonthly}
+                    </span>
+                    <span className={cn("text-sm", hi ? "text-neutral-400" : "text-neutral-500")}>/month</span>
+                  </div>
+                  {!isFree && billingCycle !== "monthly" && (
+                    <p className={cn("mt-1 text-xs font-medium", hi ? "text-amber-300" : "text-emerald-700")}>
+                      {pricing.billingText}
+                    </p>
+                  )}
+>>>>>>> 0422db4 (payments)
                 </div>
                 {planDiscountPercent(plan) > 0 && (
                   <span className="mt-2 self-start rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
@@ -1359,6 +1431,7 @@ function Pricing() {
     </section>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* FAQ                                                                 */

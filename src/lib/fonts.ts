@@ -31,7 +31,7 @@ export const AVAILABLE_FONTS: FontOption[] = [
     id: "dm-sans",
     name: "DM Sans",
     category: "sans",
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "'DM San s', sans-serif",
     googleFontFamily: "DM Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400",
     description: "Editorial, balanced & high-end boutique aesthetic",
     sampleHeadline: "Minimalist Essentials & Silhouettes",

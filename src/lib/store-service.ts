@@ -1,8 +1,8 @@
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed } from "./plans";
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, calculatePlanPrice, type BillingCycle } from "./plans";
 import { getTheme, PLATFORM_THEMES, registerUploadedThemes, type ThemeDefinition } from "./themes";
 import { manifestToTheme, type ParsedTemplate } from "./templates/package";
 import { db, storage } from "./firebase";
-import { getStoreDomain } from "./config/site";
+import { getStoreDomain, siteConfig } from "./config/site";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   collection,
@@ -198,12 +198,34 @@ export interface StoreData {
   orders: OrderData[];
   customers: CustomerData[];
   subscribers?: SubscriberData[];
+  pendingSubscription?: SubscriptionRequest | null;
+  subscriptionHistory?: SubscriptionRequest[];
   discounts?: DiscountData[];
   pluginsConfig?: PluginsConfigData;
   homepageSections?: string[];
   themeSectionOrders?: Record<string, string[]>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SubscriptionRequest {
+  id: string;
+  referenceId: string;
+  storeSubdomain: string;
+  storeName: string;
+  planId: "starter" | "pro";
+  planName: string;
+  amount: number;
+  amountFormatted: string;
+  billingCycle: "monthly" | "quarterly" | "yearly";
+  status: "pending_verification" | "verified" | "rejected";
+  paymentMethod: "upi";
+  payeeUpiId: string;
+  paymentUtr?: string;
+  createdAt: string;
+  estimatedVerificationTime: string;
+  verifiedAt?: string;
+  note?: string;
 }
 
 export interface SubscriberData {
@@ -1498,6 +1520,113 @@ class StoreService {
     if (!store) throw new Error("Store not found.");
 
     return this.updateStore(store.subdomain, { planId });
+  }
+
+  public createSubscriptionPayment(
+    subdomain: string,
+    data: {
+      planId: "starter" | "pro";
+      billingCycle?: "monthly" | "yearly";
+      paymentUtr?: string;
+      referenceId?: string;
+      payeeUpiId?: string;
+    }
+  ): SubscriptionRequest {
+    this.initClient();
+    const store = this.getStore(subdomain);
+    if (!store) throw new Error("Store not found.");
+
+    const plan = PLATFORM_PLANS[data.planId];
+    if (!plan) throw new Error("Invalid plan selected.");
+
+    const cycle: BillingCycle = data.billingCycle || "monthly";
+    const pricing = calculatePlanPrice(data.planId, cycle);
+    const amount = pricing.totalPaise;
+    const refId = data.referenceId || `REF-SUB-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const req: SubscriptionRequest = {
+      id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      referenceId: refId,
+      storeSubdomain: store.subdomain,
+      storeName: store.name,
+      planId: data.planId,
+      planName: plan.name,
+      amount,
+      amountFormatted: `₹${pricing.totalRupees.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      billingCycle: cycle,
+      status: "pending_verification",
+      paymentMethod: "upi",
+      payeeUpiId: data.payeeUpiId || siteConfig.platformUpiId,
+      paymentUtr: data.paymentUtr?.trim() || undefined,
+      createdAt: new Date().toISOString(),
+      estimatedVerificationTime: "1-2 hours",
+      note: `Subscription for ${plan.name} (${pricing.cycleLabel} · ${pricing.formattedTotal})`,
+    };
+
+    const history = store.subscriptionHistory || [];
+    this.updateStore(store.subdomain, {
+      pendingSubscription: req,
+      subscriptionHistory: [req, ...history.filter((h) => h.id !== req.id)],
+    });
+
+    return req;
+  }
+
+  public verifySubscriptionPayment(
+    subdomain: string,
+    requestId?: string
+  ): { success: boolean; store?: StoreData; error?: string } {
+    this.initClient();
+    const store = this.getStore(subdomain);
+    if (!store) return { success: false, error: "Store not found." };
+
+    const pending = store.pendingSubscription;
+    if (!pending) return { success: false, error: "No pending subscription found for verification." };
+
+    if (requestId && pending.id !== requestId) {
+      return { success: false, error: "Subscription request ID does not match pending request." };
+    }
+
+    const verifiedReq: SubscriptionRequest = {
+      ...pending,
+      status: "verified",
+      verifiedAt: new Date().toISOString(),
+    };
+
+    const updatedHistory = (store.subscriptionHistory || []).map((h) =>
+      h.id === pending.id ? verifiedReq : h
+    );
+
+    const updated = this.updateStore(store.subdomain, {
+      planId: pending.planId,
+      pendingSubscription: null,
+      subscriptionHistory: updatedHistory,
+    });
+
+    return { success: true, store: updated };
+  }
+
+  public cancelSubscriptionRequest(subdomain: string): boolean {
+    this.initClient();
+    const store = this.getStore(subdomain);
+    if (!store || !store.pendingSubscription) return false;
+
+    const cancelledReq: SubscriptionRequest = {
+      ...store.pendingSubscription,
+      status: "rejected",
+      note: "Cancelled by seller",
+    };
+
+    const updatedHistory = (store.subscriptionHistory || []).map((h) =>
+      h.id === store.pendingSubscription?.id ? cancelledReq : h
+    );
+
+    this.updateStore(store.subdomain, {
+      pendingSubscription: null,
+      subscriptionHistory: updatedHistory,
+    });
+
+    return true;
   }
 
   public setStoreTheme(

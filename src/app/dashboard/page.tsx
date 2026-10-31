@@ -18,13 +18,18 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS,
   DEFAULT_HOMEPAGE_SECTION_IDS,
 } from "@/lib/store-service";
+<<<<<<< HEAD
 import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent } from "@/lib/plans";
+=======
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, isPaidPlan, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
+>>>>>>> 0422db4 (payments)
 import { CountUp } from "@/components/home/reveal";
 import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
 import { HelpAndMore } from "@/components/dashboard/help-and-more";
 import { SetupWizard, SETUP_STEPS, isSetupStepDone } from "@/components/dashboard/setup-wizard";
 import { LockedFeature } from "@/components/dashboard/locked-feature";
+import { SubscriptionPaymentModal } from "@/components/dashboard/subscription-payment-modal";
 import { getTheme, getAllThemes, ThemeDefinition } from "@/lib/themes";
 import { AVAILABLE_FONTS, getFontFamily } from "@/lib/fonts";
 import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
@@ -56,6 +61,7 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertTriangle,
+  AlertCircle,
   Copy,
   ChevronRight,
   ChevronLeft,
@@ -271,6 +277,19 @@ function DashboardPageContent() {
 
   // Add/Edit Product Modal
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [subscriptionModalPlanId, setSubscriptionModalPlanId] = useState<"starter" | "pro">("starter");
+  const [subscriptionModalBillingCycle, setSubscriptionModalBillingCycle] = useState<BillingCycle>("monthly");
+  const [dashboardBillingCycle, setDashboardBillingCycle] = useState<BillingCycle>("monthly");
+
+  const openSubscriptionModal = (
+    planId: "starter" | "pro" = "starter",
+    cycle: BillingCycle = "monthly"
+  ) => {
+    setSubscriptionModalPlanId(planId);
+    setSubscriptionModalBillingCycle(cycle);
+    setIsSubscriptionModalOpen(true);
+  };
   // list filters for the products, orders and customers pages
   const [productSearch, setProductSearch] = useState("");
   const [productFilter, setProductFilter] = useState<"all" | "in" | "low" | "out">("all");
@@ -919,6 +938,10 @@ function DashboardPageContent() {
   };
 
   const handleUpgradePlan = (planId: "starter" | "pro") => {
+    openSubscriptionModal(planId);
+  };
+
+  const handleLegacyInstantUpgradePlan = (planId: "starter" | "pro") => {
     if (!store) return;
     storeService.upgradeStorePlan(store.subdomain, planId);
     setUpgradeSuccess(true);
@@ -5571,12 +5594,133 @@ function DashboardPageContent() {
           const limit = currentPlan.maxProducts;
           const unlimited = limit >= 999999;
           const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
+          const pending = store.pendingSubscription;
+          const history = store.subscriptionHistory || [];
           return (
             <div className="mt-6 space-y-4 animate-enter-blur">
               {upgradeSuccess && (
                 <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <span>You&apos;re now on <b>{currentPlan.name}</b>. Your new limits are active.</span>
+                </div>
+              )}
+
+              {/* Pending Subscription Verification Notice */}
+              {pending && (
+                <div className="rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-50/90 via-amber-50/50 to-white p-5 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/80">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20">
+                        <Clock className="h-6 w-6 animate-spin-slow" />
+                      </div>
+                      <div>
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-ping" />
+                          <span>Verification in Progress · 1–2 Hours</span>
+                        </div>
+                        <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-950 mt-1">
+                          Upgrade to {pending.planName} Under Review
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSubscriptionModalPlanId(pending.planId);
+                          setIsSubscriptionModalOpen(true);
+                        }}
+                        className="h-9 px-3.5 rounded-xl bg-neutral-900 text-white text-xs font-semibold hover:bg-black transition-colors cursor-pointer"
+                      >
+                        View Payment Status
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm("Cancel this pending subscription verification?")) {
+                            storeService.cancelSubscriptionRequest(store.subdomain);
+                            refreshStore();
+                          }
+                        }}
+                        className="h-9 px-3 rounded-xl border border-neutral-300 text-neutral-700 text-xs font-semibold hover:bg-neutral-100 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reassurance Message ("You can quit now, verification takes 1-2 hrs") */}
+                  <div className="mt-4 rounded-2xl bg-white border border-amber-200 p-4 text-xs text-neutral-700 space-y-1.5">
+                    <div className="flex items-center gap-2 text-amber-950 font-bold text-sm">
+                      <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>You can safely quit or explore — verification may take 1–2 hours</span>
+                    </div>
+                    <p className="leading-relaxed pl-6">
+                      We received your payment of <b className="text-neutral-950">{pending.amountFormatted}</b> (Ref:{" "}
+                      <span className="font-mono font-semibold">{pending.referenceId}</span>
+                      {pending.paymentUtr ? `, UTR: ${pending.paymentUtr}` : ""}). Bank reconciliation is
+                      automated with our banking gateway. You do not need to stay on this screen; your higher
+                      limits and features will automatically unlock.
+                    </p>
+                  </div>
+
+                  {/* Interactive Options while waiting */}
+                  <div className="mt-4 pt-3 border-t border-amber-200/60">
+                    <span className="text-xs font-bold text-neutral-900 block mb-2">
+                      Stay productive while verification completes:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("settings")}
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
+                      >
+                        <Store className="h-4 w-4 text-blue-600 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-neutral-900">Setup Store</span>
+                          <span className="block text-[11px] text-neutral-500 truncate">Configure shipping & logo</span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("overview")}
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
+                      >
+                        <LayoutDashboard className="h-4 w-4 text-violet-600 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-neutral-900">Explore Dashboard</span>
+                          <span className="block text-[11px] text-neutral-500 truncate">Track store activity</span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("themes")}
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
+                      >
+                        <Palette className="h-4 w-4 text-amber-600 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-neutral-900">Preview Themes</span>
+                          <span className="block text-[11px] text-neutral-500 truncate">Choose your new look</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Demo Instant Test Verification helper */}
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        storeService.verifySubscriptionPayment(store.subdomain);
+                        refreshStore();
+                      }}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 hover:text-amber-950 underline decoration-dashed cursor-pointer"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      <span>Simulate Bank Approval (Instant Test)</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -5675,6 +5819,75 @@ function DashboardPageContent() {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Subscription Invoices & Billing History */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-neutral-900">Billing History & Invoices</h4>
+                    <p className="text-xs text-neutral-500">
+                      Your platform subscription transactions, receipts and verification statuses.
+                    </p>
+                  </div>
+                </div>
+
+                {history.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-xs text-neutral-500">
+                    No payment transactions yet. When you upgrade your plan via UPI, your payment receipts and status will show here.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 overflow-hidden">
+                    {history.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white hover:bg-neutral-50/50 transition-colors"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-neutral-900">{item.planName}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                item.status === "verified"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : item.status === "pending_verification"
+                                  ? "bg-amber-100 text-amber-800 animate-pulse"
+                                  : "bg-neutral-100 text-neutral-600"
+                              }`}
+                            >
+                              {item.status === "verified"
+                                ? "Active / Verified"
+                                : item.status === "pending_verification"
+                                ? "Verifying (1–2 hrs)"
+                                : "Cancelled"}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-500 font-mono">
+                            <span>Ref: {item.referenceId}</span>
+                            {item.paymentUtr && <span>UTR: {item.paymentUtr}</span>}
+                            <span>{new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                          <span className="font-bold text-sm text-neutral-900 font-mono">{item.amountFormatted}</span>
+                          {item.status === "pending_verification" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSubscriptionModalPlanId(item.planId);
+                                setIsSubscriptionModalOpen(true);
+                              }}
+                              className="text-xs font-semibold text-neutral-700 hover:text-black underline cursor-pointer"
+                            >
+                              Check Status
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -6640,6 +6853,27 @@ function DashboardPageContent() {
           </div>
         </div>
       </Modal>
+
+      {/* Subscription Payment & Verification Modal */}
+      {store && (
+        <SubscriptionPaymentModal
+          isOpen={isSubscriptionModalOpen}
+          onClose={() => setIsSubscriptionModalOpen(false)}
+          store={store}
+          initialPlanId={subscriptionModalPlanId}
+          onSuccess={() => {
+            refreshStore();
+          }}
+          onNavigateTab={(tab) => {
+            setActiveTab(tab as any);
+            window.scrollTo({ top: 0 });
+          }}
+          onOpenSetupWizard={() => {
+            setActiveTab("settings");
+            window.scrollTo({ top: 0 });
+          }}
+        />
+      )}
 
       {/* Floating Save Toast for Section Order */}
       {sectionSavedToast && (
