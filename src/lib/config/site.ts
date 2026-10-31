@@ -69,19 +69,48 @@ export function getStoreDomain(subdomain: string): string {
 }
 
 /**
- * Returns the address a store opens at: "https://storename.shopper.in" in production, or
- * "http://storename.localhost:3000" when the app itself runs on localhost, so subdomains
- * can be tried locally. `path` is appended as-is (e.g. "/products/tee" or "?view=cart").
+ * The store name when `host` is a store's own address, e.g. "roxtenn" for roxtenn.shopper.in or
+ * roxtenn.localhost. Any other host (the main domain, www, or a deployment URL such as
+ * something.vercel.app) belongs to the main app and returns null.
  */
-export function getStoreUrl(subdomain: string, path = ""): string {
+export function getStoreSubdomainFromHost(host: string): string | null {
+  const hostname = host.replace(/:\d+$/, "").toLowerCase();
+  const suffixes = [`.${siteConfig.domain}`, ".localhost"];
+  for (const suffix of suffixes) {
+    if (hostname.endsWith(suffix)) {
+      const sub = hostname.slice(0, -suffix.length);
+      return sub && sub !== "www" && !sub.includes(".") ? sub : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Where a store opens, judged from the address the app is running at (`appUrl`):
+ * - on the company domain: "https://storename.shopper.in"
+ * - on localhost: "http://storename.localhost:3000", so subdomains can be tried locally
+ * - anywhere else (e.g. a vercel.app deployment, where *.shopper.in isn't connected): "/s/storename"
+ * `path` is appended as-is (e.g. "/products/tee" or "?view=cart").
+ */
+export function resolveStoreUrl(subdomain: string, path: string, appUrl: string): string {
   try {
-    const app = new URL(siteConfig.url);
-    if (app.hostname === "localhost" || app.hostname === "127.0.0.1") {
+    const app = new URL(appUrl);
+    const host = app.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")) {
       return `${app.protocol}//${subdomain}.localhost${app.port ? `:${app.port}` : ""}${path}`;
     }
+    if (host === siteConfig.domain || host.endsWith(`.${siteConfig.domain}`)) {
+      return `https://${getStoreDomain(subdomain)}${path}`;
+    }
   } catch {
-    // fall through to the public domain
+    // fall through to the path form
   }
-  return `https://${getStoreDomain(subdomain)}${path}`;
+  return `/s/${subdomain}${path}`;
+}
+
+/** The address a store opens at from wherever the app is currently running. */
+export function getStoreUrl(subdomain: string, path = ""): string {
+  const appUrl = typeof window !== "undefined" ? window.location.href : siteConfig.url;
+  return resolveStoreUrl(subdomain, path, appUrl);
 }
 

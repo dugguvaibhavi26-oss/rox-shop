@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
+import { siteConfig, getStoreDomain, getStoreSubdomainFromHost, resolveStoreUrl } from "@/lib/config/site";
 
 describe("Configuration & Security Settings", () => {
   const originalEnv = process.env;
@@ -24,19 +24,21 @@ describe("Configuration & Security Settings", () => {
     expect(getStoreDomain("roxten")).toBe("roxten.shopper.in");
   });
 
-  it("opens stores on their subdomain, using *.localhost when the app runs locally", () => {
-    const appUrl = siteConfig.url;
-    try {
-      siteConfig.url = "https://shopper.in";
-      expect(getStoreUrl("roxten")).toBe("https://roxten.shopper.in");
-      expect(getStoreUrl("roxten", "/products/tee")).toBe("https://roxten.shopper.in/products/tee");
+  it("opens stores on their subdomain, or by path where *.shopper.in isn't connected", () => {
+    expect(resolveStoreUrl("roxten", "", "https://shopper.in/dashboard")).toBe("https://roxten.shopper.in");
+    expect(resolveStoreUrl("roxten", "/products/tee", "https://www.shopper.in/")).toBe("https://roxten.shopper.in/products/tee");
+    expect(resolveStoreUrl("roxten", "", "http://localhost:3000/dashboard")).toBe("http://roxten.localhost:3000");
+    expect(resolveStoreUrl("roxten", "?view=cart", "http://localhost:3000")).toBe("http://roxten.localhost:3000?view=cart");
+    expect(resolveStoreUrl("roxten", "", "https://rox-shop-g4jaczx9k.vercel.app/dashboard")).toBe("/s/roxten");
+  });
 
-      siteConfig.url = "http://localhost:3000";
-      expect(getStoreUrl("roxten")).toBe("http://roxten.localhost:3000");
-      expect(getStoreUrl("roxten", "?view=cart")).toBe("http://roxten.localhost:3000?view=cart");
-    } finally {
-      siteConfig.url = appUrl;
-    }
+  it("only treats subdomains of the company domain (or localhost) as stores", () => {
+    expect(getStoreSubdomainFromHost("roxten.shopper.in")).toBe("roxten");
+    expect(getStoreSubdomainFromHost("roxten.localhost:3000")).toBe("roxten");
+    expect(getStoreSubdomainFromHost("shopper.in")).toBeNull();
+    expect(getStoreSubdomainFromHost("www.shopper.in")).toBeNull();
+    expect(getStoreSubdomainFromHost("localhost:3000")).toBeNull();
+    expect(getStoreSubdomainFromHost("rox-shop-g4jaczx9k-vaibhavis-projects-2f394d05.vercel.app")).toBeNull();
   });
 
   it("crashes startup if ALLOW_DEV_MOCK_OTP is enabled in production", async () => {

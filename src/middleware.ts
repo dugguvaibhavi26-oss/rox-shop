@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { siteConfig } from "./lib/config/site";
+import { getStoreSubdomainFromHost } from "./lib/config/site";
 
 export const config = {
   matcher: [
@@ -18,30 +18,18 @@ export default function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get("host") || "";
 
-  // Normalize hostname (strip port for local dev e.g. localhost:3000)
-  const currentHost = hostname.replace(/:\d+$/, "");
-
-  // Prevent rewriting for root domain and www
-  const isRoot =
-    currentHost === "localhost" ||
-    currentHost === "127.0.0.1" ||
-    currentHost === siteConfig.domain ||
-    currentHost === `www.${siteConfig.domain}` ||
-    currentHost === "shopper.in" ||
-    currentHost === `www.shopper.in` ||
-    currentHost === "shopper.site" ||
-    currentHost === `www.shopper.site`;
-
+  // Only a store's own address (roxtenn.shopper.in, roxtenn.localhost) is a storefront. The main
+  // domain, www and deployment URLs like rox-shop-xyz.vercel.app all serve the main app.
+  const storeSub = getStoreSubdomainFromHost(hostname);
   const path = url.pathname;
 
-  // On a store's own address (roxtenn.shopper.in), links written as /s/roxtenn/... are tidied
-  // to /... so the browser shows roxtenn.shopper.in/products/x rather than repeating the name.
-  if (!isRoot) {
-    const sub = currentHost.split(".")[0];
-    const prefix = `/s/${sub}`;
-    if (sub && sub !== "www" && (path === prefix || path.startsWith(`${prefix}/`))) {
-      url.pathname = path.slice(prefix.length) || "/";
-      return NextResponse.redirect(url, 307);
+  if (storeSub) {
+    // Links written as /s/roxtenn/... are tidied to /... so the address isn't repeated
+    const prefix = `/s/${storeSub}`;
+    if (path === prefix || path.startsWith(`${prefix}/`)) {
+      // build on the Host the visitor used so the store's own address is kept
+      const target = new URL(`${path.slice(prefix.length) || "/"}${url.search}`, `${url.protocol}//${hostname}`);
+      return NextResponse.redirect(target, 307);
     }
   }
 
@@ -56,14 +44,10 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract subdomain if on a subdomain (e.g. storename.shopper.in, storename.oursite.in or storename.localhost)
-  if (!isRoot) {
-    const subdomain = currentHost.split(".")[0];
-    if (subdomain && subdomain !== "www") {
-      // Rewrite to storefront route /s/[subdomain]
-      url.pathname = `/s/${subdomain}${path === "/" ? "" : path}`;
-      return NextResponse.rewrite(url);
-    }
+  // Serve the storefront route /s/[subdomain] on the store's own address
+  if (storeSub) {
+    url.pathname = `/s/${storeSub}${path === "/" ? "" : path}`;
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();
