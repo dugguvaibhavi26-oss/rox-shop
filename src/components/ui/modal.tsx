@@ -63,20 +63,20 @@ export function Modal({
         {/* Mobile drag handle for sheet */}
         {variant === "sheet" && (
           <div className="w-full flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1.5 rounded-full bg-[#CBD5E1]" />
+            <div className="w-10 h-1.5 rounded-full bg-[#CCCCCC]" />
           </div>
         )}
 
         {/* Header */}
         {(title || description) && (
-          <div className="flex items-start justify-between px-6 pt-5 pb-3 border-b border-[#F1F5F9]">
+          <div className="flex items-start justify-between px-6 pt-5 pb-3 border-b border-[#F5F5F5]">
             <div className="flex flex-col text-left">
-              {title && <h2 className="text-lg font-bold text-[#0F172A]">{title}</h2>}
-              {description && <p className="text-xs text-[#64748B] mt-0.5">{description}</p>}
+              {title && <h2 className="text-lg font-bold text-[#111111]">{title}</h2>}
+              {description && <p className="text-xs text-[#555555] mt-0.5">{description}</p>}
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 -mr-1 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              className="p-1.5 -mr-1 rounded-md text-[#555555] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />

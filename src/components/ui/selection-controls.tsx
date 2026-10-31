@@ -35,9 +35,9 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           <div
             className={cn(
               "h-5 w-5 rounded-md border transition-all duration-150 flex items-center justify-center",
-              "border-[#CBD5E1] bg-white group-hover:border-[#94A3B8]",
-              "peer-focus-visible:ring-2 peer-focus-visible:ring-[#1E3A8A]/20 peer-focus-visible:border-[#1E3A8A]",
-              "peer-checked:bg-[#1E3A8A] peer-checked:border-[#1E3A8A] peer-checked:text-white"
+              "border-[#CCCCCC] bg-white group-hover:border-[#999999]",
+              "peer-focus-visible:ring-2 peer-focus-visible:ring-[#111111]/20 peer-focus-visible:border-[#111111]",
+              "peer-checked:bg-[#111111] peer-checked:border-[#111111] peer-checked:text-white"
             )}
           >
             <Check className="h-3.5 w-3.5 stroke-[3] opacity-0 peer-checked:opacity-100 transition-opacity" />
@@ -45,8 +45,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         </div>
         {(label || description) && (
           <div className="flex flex-col text-left">
-            {label && <span className="text-sm font-medium text-[#0F172A]">{label}</span>}
-            {description && <span className="text-xs text-[#64748B] mt-0.5">{description}</span>}
+            {label && <span className="text-sm font-medium text-[#111111]">{label}</span>}
+            {description && <span className="text-xs text-[#555555] mt-0.5">{description}</span>}
           </div>
         )}
       </label>
@@ -87,18 +87,18 @@ export const Radio = React.forwardRef<HTMLInputElement, RadioProps>(
           <div
             className={cn(
               "h-5 w-5 rounded-full border transition-all duration-150 flex items-center justify-center",
-              "border-[#CBD5E1] bg-white group-hover:border-[#94A3B8]",
-              "peer-focus-visible:ring-2 peer-focus-visible:ring-[#1E3A8A]/20 peer-focus-visible:border-[#1E3A8A]",
-              "peer-checked:border-[#1E3A8A]"
+              "border-[#CCCCCC] bg-white group-hover:border-[#999999]",
+              "peer-focus-visible:ring-2 peer-focus-visible:ring-[#111111]/20 peer-focus-visible:border-[#111111]",
+              "peer-checked:border-[#111111]"
             )}
           >
-            <div className="h-2.5 w-2.5 rounded-full bg-[#1E3A8A] scale-0 peer-checked:scale-100 transition-transform duration-150" />
+            <div className="h-2.5 w-2.5 rounded-full bg-[#111111] scale-0 peer-checked:scale-100 transition-transform duration-150" />
           </div>
         </div>
         {(label || description) && (
           <div className="flex flex-col text-left">
-            {label && <span className="text-sm font-medium text-[#0F172A]">{label}</span>}
-            {description && <span className="text-xs text-[#64748B] mt-0.5">{description}</span>}
+            {label && <span className="text-sm font-medium text-[#111111]">{label}</span>}
+            {description && <span className="text-xs text-[#555555] mt-0.5">{description}</span>}
           </div>
         )}
       </label>
@@ -131,8 +131,8 @@ export function Toggle({ label, description, checked = false, onChange, disabled
     >
       {(label || description) && (
         <div className="flex flex-col text-left select-none">
-          {label && <span className="text-sm font-medium text-[#0F172A]">{label}</span>}
-          {description && <span className="text-xs text-[#64748B] mt-0.5">{description}</span>}
+          {label && <span className="text-sm font-medium text-[#111111]">{label}</span>}
+          {description && <span className="text-xs text-[#555555] mt-0.5">{description}</span>}
         </div>
       )}
       <button
@@ -143,8 +143,8 @@ export function Toggle({ label, description, checked = false, onChange, disabled
         disabled={disabled}
         onClick={() => !disabled && onChange?.(!checked)}
         className={cn(
-          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A]/20",
-          checked ? "bg-[#1E3A8A]" : "bg-[#CBD5E1]",
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#111111]/20",
+          checked ? "bg-[#111111]" : "bg-[#CCCCCC]",
           disabled && "cursor-not-allowed"
         )}
       >

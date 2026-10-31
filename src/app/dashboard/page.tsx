@@ -19,9 +19,13 @@ import {
   DEFAULT_HOMEPAGE_SECTION_IDS,
 } from "@/lib/store-service";
 import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, isPaidPlan } from "@/lib/plans";
+import { CountUp } from "@/components/home/reveal";
+import { ShopperWordmark } from "@/components/brand/shopper-wordmark";
+import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
+import { HelpAndMore } from "@/components/dashboard/help-and-more";
 import { PLATFORM_THEMES, getTheme, ThemeDefinition } from "@/lib/themes";
 import { AVAILABLE_FONTS, getFontFamily } from "@/lib/fonts";
-import { siteConfig } from "@/lib/config/site";
+import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -89,6 +93,8 @@ import {
   ShoppingCart,
   BarChart2,
   SlidersHorizontal,
+  IndianRupee,
+  ArrowUpRight,
 } from "lucide-react";
 
 export default function DashboardPageWrapper() {
@@ -119,7 +125,7 @@ function DashboardPageContent() {
   const [store, setStore] = useState<StoreData | null>(null);
   const [userStores, setUserStores] = useState<StoreData[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "products" | "categories" | "orders" | "discounts" | "customers" | "reviews" | "banners" | "themes" | "billing" | "settings" | "plugins"
+    "overview" | "products" | "categories" | "orders" | "discounts" | "customers" | "reviews" | "banners" | "themes" | "billing" | "settings" | "plugins" | "notifications" | "profile"
   >((urlTabParam as any) || "overview");
 
   useEffect(() => {
@@ -433,9 +439,9 @@ function DashboardPageContent() {
 
   const greetingTime = useMemo(() => {
     const hr = new Date().getHours();
-    if (hr < 12) return "Good Morning";
-    if (hr < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (hr < 12) return "Good morning";
+    if (hr < 17) return "Good afternoon";
+    return "Good evening";
   }, []);
 
   const unfulfilledOrders = useMemo(() => {
@@ -1262,286 +1268,322 @@ function DashboardPageContent() {
   const totalOrders = store.orders.length;
   const totalProducts = store.products.length;
   const totalCustomers = store.customers?.length || 0;
-  const liveStoreUrl = `/s/${store.subdomain}`;
-  const storeWebDomain = `${store.subdomain}.${siteConfig.domain}`;
+  const liveStoreUrl = getStoreUrl(store.subdomain);
+  const storeWebDomain = getStoreDomain(store.subdomain);
   const storePublicUrl = `https://${storeWebDomain}`;
 
+  // Sidebar navigation, grouped. `badge` is a count, "dot" (needs attention) or "lock" (paid feature).
+  type DashTab = typeof activeTab;
+  const navGroups: {
+    label: string;
+    items: { id: DashTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number | "dot" | "lock" | "active" }[];
+  }[] = [
+    {
+      label: "Store",
+      items: [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "orders", label: "Orders", icon: ShoppingBag, badge: unfulfilledOrders.length > 0 ? "dot" : undefined },
+        { id: "products", label: "Products", icon: Package, badge: totalProducts },
+        { id: "categories", label: "Categories", icon: FolderTree, badge: store.categories?.length || 0 },
+        { id: "customers", label: "Customers", icon: Users },
+        { id: "reviews", label: "Reviews", icon: Star, badge: canUseReviews(store.planId) ? undefined : "lock" },
+      ],
+    },
+    {
+      label: "Marketing",
+      items: [
+        { id: "discounts", label: "Discounts", icon: Tag, badge: store.discounts?.length || 0 },
+        { id: "banners", label: "Banners", icon: ImageIcon },
+      ],
+    },
+    {
+      label: "Setup",
+      items: [
+        { id: "themes", label: "Themes", icon: Palette },
+        { id: "billing", label: "Subscription", icon: CreditCard },
+        { id: "settings", label: "Settings", icon: Settings },
+        { id: "plugins", label: "Plugins", icon: Plug, badge: isPaidPlan(store.planId) ? "active" : "lock" },
+      ],
+    },
+  ];
+
+  const pageTitles: Record<DashTab, { title: string; text: string }> = {
+    overview: { title: "", text: "" },
+    products: { title: "Products", text: "Manage your products, pricing, and stock." },
+    categories: { title: "Categories & collections", text: "Organize products into categories and homepage collections." },
+    orders: { title: "Orders", text: "Track customer orders and shipments." },
+    discounts: { title: "Discounts", text: "Create promo codes and discount coupons." },
+    customers: { title: "Customers", text: "View your customers and order history." },
+    reviews: { title: "Reviews", text: "Manage customer ratings and reviews." },
+    banners: { title: "Banners", text: "Upload storefront hero promotional banners." },
+    themes: { title: "Themes", text: "Customize your storefront theme and style." },
+    billing: { title: "Subscription", text: "Manage your subscription plan and limits." },
+    settings: { title: "Settings", text: "Configure payments, payouts, and store details." },
+    plugins: { title: "Plugins", text: "Email alerts and customer notifications." },
+    notifications: { title: "Notifications", text: "Orders, stock alerts and updates from your store." },
+    profile: { title: "Profile", text: "Your account, store and plan." },
+  };
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  const markAllNotificationsRead = () => {
+    setNotifications((list) => list.map((n) => ({ ...n, unread: false })));
+    setHasUnreadNotifications(false);
+  };
+  const openNotification = (n: (typeof notifications)[number]) => {
+    setNotifications((list) => {
+      const next = list.map((x) => (x.id === n.id ? { ...x, unread: false } : x));
+      setHasUnreadNotifications(next.some((x) => x.unread));
+      return next;
+    });
+    setIsNotificationOpen(false);
+    if (n.type === "order") setActiveTab("orders");
+    else if (n.type === "stock") setActiveTab("products");
+    else if (n.type === "feature") setActiveTab("discounts");
+  };
+  const notificationIcon = (type: string) =>
+    type === "order"
+      ? { icon: ShoppingBag, tone: "bg-emerald-50 text-emerald-600" }
+      : type === "stock"
+        ? { icon: Package, tone: "bg-amber-50 text-amber-600" }
+        : type === "feature"
+          ? { icon: Sparkles, tone: "bg-violet-50 text-violet-600" }
+          : { icon: Bell, tone: "bg-sky-50 text-sky-600" };
+
+  const copyStoreLink = () => {
+    navigator.clipboard.writeText(storePublicUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const activeTheme = getTheme(store.activeThemeSlug);
+  const productThumbs = store.products.map((p) => p.images?.[0]).filter(Boolean).slice(0, 4) as string[];
+  const reviewAvg = store.reviews.length ? store.reviews.reduce((acc, r) => acc + r.rating, 0) / store.reviews.length : 0;
+  const liveBanners = store.banners.filter((b) => b.isActive).length;
+
   return (
-    <div className="min-h-screen w-full bg-neutral-50 text-[#111111]">
-      {/* Sidebar Navigation (Fixed to viewport height, stays permanently fixed and never moves or stretches) */}
-      <aside className="hidden md:flex md:w-64 fixed inset-y-0 left-0 bg-white border-r border-neutral-200 flex-col z-30 shadow-xs">
-        {/* Brand Header */}
-        <div className="p-4 pb-3 border-b border-neutral-100 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-[#111111] text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                S
-              </div>
-              <span className="font-bold text-base tracking-tight">Shopper Admin</span>
-            </div>
-            {store && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase tracking-wider">
-                {store.planId}
+    <div className="dash home-sans min-h-screen w-full bg-[#FAFAFA] text-neutral-950">
+      {/* Top bar: profile · logo · notifications */}
+      <header className="fixed top-0 inset-x-0 z-40 h-16 bg-white/90 backdrop-blur-md border-b border-neutral-200">
+        <div className="h-full px-3 sm:px-5 grid grid-cols-[1fr_auto_1fr] items-center">
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab("profile")}
+              aria-label="Your profile"
+              className="rounded-full p-0.5 transition-opacity hover:opacity-80"
+            >
+              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-800 to-black text-white text-[11px] font-semibold flex items-center justify-center">
+                {ownerInitials}
               </span>
-            )}
+            </button>
           </div>
 
-          {userStores.length > 1 && (
-            <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center justify-between text-[10px]">
-              <span className="text-neutral-500 font-medium">Store</span>
-              <select
-                value={store.subdomain}
-                onChange={(e) => {
-                  setActiveSubdomain(e.target.value);
-                  router.push(`/dashboard?store=${e.target.value}`);
-                }}
-                className="text-[10px] bg-white border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-700 font-medium cursor-pointer"
+          {/* the logo only links to the main site on desktop; on phones it's just the brand mark */}
+          <Link
+            href="/"
+            aria-label={siteConfig.name}
+            className="justify-self-center text-neutral-950 transition-opacity pointer-events-none md:pointer-events-auto md:hover:opacity-70"
+          >
+            <ShopperWordmark className="h-9 w-auto" />
+          </Link>
+
+          <div className="flex items-center justify-end">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsNotificationOpen((o) => !o)}
+                aria-label="Notifications"
+                aria-expanded={isNotificationOpen}
+                className={`relative w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors ${
+                  isNotificationOpen ? "bg-neutral-100 text-black" : "text-neutral-700 hover:bg-neutral-100 hover:text-black"
+                }`}
               >
-                {userStores.map((s) => (
-                  <option key={s.subdomain} value={s.subdomain}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                <Bell className="w-[18px] h-[18px]" />
+                {hasUnreadNotifications && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 ring-2 ring-white" />
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
+                  <div className="absolute right-0 top-12 z-50 w-[340px] max-w-[calc(100vw-24px)] rounded-[16px] bg-white border border-neutral-200 shadow-[0_24px_60px_-16px_rgba(0,0,0,0.28)] overflow-hidden animate-in zoom-in-95 origin-top-right">
+                    <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+                      <span className="flex items-center gap-2 text-sm font-semibold">
+                        Notifications
+                        {unreadCount > 0 && (
+                          <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">{unreadCount} new</span>
+                        )}
+                      </span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotificationsRead}
+                          style={{ minHeight: 0 }}
+                          className="text-[11px] font-medium text-neutral-500 hover:text-black transition-colors"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="px-1.5">
+                      {notifications.slice(0, 4).map((n) => {
+                        const { icon: Icon, tone } = notificationIcon(n.type);
+                        return (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={() => openNotification(n)}
+                            className="w-full flex items-start gap-3 rounded-[10px] px-2.5 py-2.5 text-left hover:bg-neutral-50 transition-colors"
+                          >
+                            <span className={`w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 ${tone}`}>
+                              <Icon className="w-4 h-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className={`block text-[13px] truncate ${n.unread ? "font-semibold text-neutral-950" : "font-medium text-neutral-600"}`}>{n.title}</span>
+                              <span className="block text-[11px] text-neutral-500 truncate">{n.desc}</span>
+                              <span className="block mt-0.5 text-[10px] text-neutral-400">{n.time}</span>
+                            </span>
+                            {n.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        setActiveTab("notifications");
+                      }}
+                      className="mt-1 w-full flex items-center justify-center gap-1.5 border-t border-neutral-100 py-3 text-[13px] font-semibold hover:bg-neutral-50 transition-colors"
+                    >
+                      View all notifications
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
+        </div>
+      </header>
+
+      {/* Sidebar navigation — fixed to the viewport on desktop */}
+      <aside
+        className={`hidden md:flex md:w-64 fixed top-16 bottom-0 left-0 bg-white border-r border-neutral-200 flex-col z-30`}
+      >
+        {/* Current store */}
+        <div className="px-5 py-4 border-b border-neutral-200 shrink-0">
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Store</span>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold truncate">{store.name}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-[6px] border border-neutral-200 text-neutral-600 shrink-0">
+              {store.planId}
+            </span>
+          </div>
         </div>
 
-        {/* Navigation Links (Compact, grouped, and scrollable if height is restricted) */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "overview"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
+        {userStores.length > 1 && (
+          <div className="px-4 pt-3">
+            <select
+              value={store.subdomain}
+              onChange={(e) => {
+                setActiveSubdomain(e.target.value);
+                router.push(`/dashboard?store=${e.target.value}`);
+              }}
+              className="w-full h-9 text-xs bg-white border border-neutral-200 rounded-[8px] px-2.5 text-neutral-800 font-medium cursor-pointer focus:outline-none focus:border-black"
             >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Overview</span>
-            </button>
+              {userStores.map((s) => (
+                <option key={s.subdomain} value={s.subdomain}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-            <button
-              onClick={() => setActiveTab("products")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "products"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Package className="w-4 h-4" />
-                <span>Products</span>
+        {/* Grouped links */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{group.label}</p>
+              <div className="space-y-0.5">
+                {group.items.map(({ id, label, icon: Icon, badge }) => {
+                  const isCurrent = activeTab === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setActiveTab(id)}
+                      className={`group/nav relative w-full flex items-center gap-3 px-3 h-9 rounded-[8px] text-[13px] transition-colors ${
+                        isCurrent
+                          ? "bg-neutral-100 text-neutral-950 font-semibold"
+                          : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950"
+                      }`}
+                    >
+                      {isCurrent && <span className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500" />}
+                      <Icon className={`w-4 h-4 shrink-0 transition-transform duration-300 group-hover/nav:translate-x-0.5 ${isCurrent ? "text-indigo-600" : "text-neutral-400"}`} />
+                      <span className="flex-1 text-left">{label}</span>
+                      {typeof badge === "number" && <span className="text-[11px] tabular-nums text-neutral-400">{badge}</span>}
+                      {badge === "dot" && <span className="w-1.5 h-1.5 rounded-full bg-black" title="Needs attention" />}
+                      {badge === "lock" && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-neutral-500 border border-neutral-200 rounded-[6px] px-1.5 py-0.5">
+                          <Lock className="w-2.5 h-2.5" />
+                          Paid
+                        </span>
+                      )}
+                      {badge === "active" && <span className="text-[10px] font-medium text-neutral-500">On</span>}
+                    </button>
+                  );
+                })}
               </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-800 font-bold">
-                {totalProducts}
-              </span>
-            </button>
+            </div>
+          ))}
+        </nav>
 
-            <button
-              onClick={() => setActiveTab("categories")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "categories"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FolderTree className="w-4 h-4" />
-                <span>Categories</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-800 font-bold">
-                {store.categories?.length || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "orders"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <ShoppingBag className="w-4 h-4" />
-                <span>Orders</span>
-              </div>
-              {store.orders.some((o) => o.fulfilmentStatus === "placed") && (
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("discounts")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "discounts"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Tag className="w-4 h-4" />
-                <span>Discounts</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-800 font-bold">
-                {store.discounts?.length || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("customers")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "customers"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Customers</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("reviews")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "reviews"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Star className="w-4 h-4" />
-                <span>Reviews</span>
-              </div>
-              {!canUseReviews(store.planId) && (
-                <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                  <Lock className="w-2.5 h-2.5" />
-                  PAID
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("banners")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "banners"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" />
-              <span>Banners</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("themes")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "themes"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <Palette className="w-4 h-4" />
-              <span>Themes</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("billing")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "billing"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <CreditCard className="w-4 h-4" />
-                <span>Subscription</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "settings"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Settings</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("plugins")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === "plugins"
-                  ? "bg-[#111111] text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-black"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Plug className="w-4 h-4" />
-                <span>Plugins</span>
-              </div>
-              {!isPaidPlan(store.planId) ? (
-                <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                  <Lock className="w-2.5 h-2.5" />
-                  PAID
-                </span>
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                  Active
-                </span>
-              )}
-            </button>
-          </nav>
-        </div>
-
-        {/* Pinned Bottom Footer: Catalog Quota + Account Info */}
-        <div className="p-3 border-t border-neutral-200 shrink-0 bg-neutral-50/70 space-y-3">
-          {/* Plan Quota Meter Box */}
-          <div className="p-3 rounded-lg bg-white border border-neutral-200/90 shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-neutral-600">Catalog Quota</span>
-              <span className="text-[11px] font-bold text-neutral-900">
-                {totalProducts} / {currentPlan.maxProducts >= 9999 ? "Unlimited" : currentPlan.maxProducts}
+        {/* Plan usage + account */}
+        <div className="p-4 border-t border-neutral-200 shrink-0 space-y-4">
+          <div>
+            <div className="flex items-center justify-between text-[11px] mb-2">
+              <span className="text-neutral-500">Products</span>
+              <span className="font-semibold tabular-nums">
+                {totalProducts} / {currentPlan.maxProducts >= 9999 ? "∞" : currentPlan.maxProducts}
               </span>
             </div>
-
-            <div className="w-full h-1.5 rounded-full bg-neutral-200 overflow-hidden mb-2.5">
+            <div className="w-full h-1 rounded-full bg-neutral-200 overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#111111] transition-all"
+                className="h-full rounded-full bg-black transition-all"
                 style={{
                   width: `${Math.min(100, (totalProducts / (currentPlan.maxProducts >= 9999 ? 100 : currentPlan.maxProducts)) * 100)}%`,
                 }}
               />
             </div>
-
             {store.planId === "free" && (
-              <Button
-                size="sm"
-                className="w-full text-xs font-semibold bg-[#111111] hover:bg-black text-white rounded-md h-7 py-0"
+              <button
                 onClick={() => setActiveTab("billing")}
+                className="mt-3 w-full h-8 rounded-[8px] border border-neutral-300 text-xs font-semibold hover:border-black hover:bg-black hover:text-white transition-colors"
               >
-                Upgrade Subscription
-              </Button>
+                Upgrade plan
+              </button>
             )}
           </div>
 
-          {/* Merchant Account & Sign Out */}
-          <div className="flex items-center justify-between px-1 pt-2.5 mt-2 border-t border-neutral-100">
-            <div className="min-w-0 flex-1 mr-2">
-              <span className="text-[9px] text-neutral-400 block font-semibold uppercase tracking-wider">Signed In As</span>
-              <span className="text-xs font-bold text-neutral-800 truncate block">{user?.email}</span>
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-full bg-neutral-900 text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+              {ownerInitials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold truncate">{ownerName}</span>
+              <span className="block text-[11px] text-neutral-500 truncate">{user?.email}</span>
             </div>
             <button
               onClick={async () => {
                 await signOut();
                 router.push("/login");
               }}
-              title="Sign Out"
-              className="p-1.5 rounded-md text-neutral-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Sign out"
+              className="p-1.5 rounded-[8px] text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -1550,497 +1592,384 @@ function DashboardPageContent() {
       </aside>
 
       {/* Main Content Area (Offset by fixed sidebar on desktop) */}
-      <div className="md:pl-64 flex flex-col min-h-screen">
-        {/* Mobile Fixed Top Header (Mobile Only - Matching Desktop Brand Header) */}
-        <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 px-4 py-3 shrink-0 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-md bg-[#111111] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                S
-              </div>
-              <div className="min-w-0 flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-base tracking-tight text-neutral-900 leading-none">Shopper Admin</span>
-                  {store && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase tracking-wider shrink-0">
-                      {store.planId}
-                    </span>
-                  )}
-                </div>
-                {store?.name && (
-                  <span className="text-[11px] text-neutral-500 font-medium truncate mt-0.5">
-                    {store.name}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {userStores.length > 1 && (
-                <select
-                  value={store.subdomain}
-                  onChange={(e) => {
-                    setActiveSubdomain(e.target.value);
-                    router.push(`/dashboard?store=${e.target.value}`);
-                  }}
-                  className="text-[11px] bg-white border border-neutral-200 rounded-md px-2 py-1 text-neutral-700 font-medium cursor-pointer shadow-2xs max-w-[120px] truncate"
-                >
-                  {userStores.map((s) => (
-                    <option key={s.subdomain} value={s.subdomain}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <button
-                onClick={() => setIsNotificationOpen(true)}
-                className="relative p-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
-                title="Notification Center"
-              >
-                <Bell className="w-4 h-4" />
-                {hasUnreadNotifications && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-                )}
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* Top Workspace Header (Matching reference mockup exactly, no coins) */}
-        <header className="w-full bg-white border-b border-neutral-200/80 px-6 sm:px-10 py-7 sm:py-8 flex flex-col md:flex-row md:items-start justify-between gap-6 shrink-0">
-          <div className="min-w-0">
-            {activeTab === "overview" ? (
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-1.5">
-                  Dashboard
-                </p>
-                <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-neutral-900 tracking-tight leading-[1.12]">
-                  {greetingTime},<br />
-                  <span>{ownerName}</span>
-                </h1>
-                <p className="text-sm sm:text-base text-neutral-500 font-medium mt-2">
-                  Welcome back to your store. Ready to make some sales today?
-                </p>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <span className="text-xs text-neutral-400 font-medium">Store URL:</span>
-                  <a
-                    href={liveStoreUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-800 font-mono text-xs font-semibold border border-neutral-300/80 shadow-2xs hover:border-black transition-colors"
-                    title="Open live storefront"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-neutral-500" />
-                    <span>{storeWebDomain}</span>
-                    <ExternalLink className="w-3 h-3 text-neutral-400 ml-0.5" />
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
-                  {activeTab === "products" && "Products"}
-                  {activeTab === "categories" && "Categories & Collections"}
-                  {activeTab === "orders" && "Orders"}
-                  {activeTab === "discounts" && "Discounts"}
-                  {activeTab === "customers" && "Customers"}
-                  {activeTab === "reviews" && "Reviews"}
-                  {activeTab === "banners" && "Banners"}
-                  {activeTab === "themes" && "Themes"}
-                  {activeTab === "billing" && "Subscription"}
-                  {activeTab === "settings" && "Settings"}
-                  {activeTab === "plugins" && "Plugins"}
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium">
-                  {activeTab === "products" && "Manage your products, pricing, and stock."}
-                  {activeTab === "categories" && "Organize products into categories and homepage collections."}
-                  {activeTab === "orders" && "Track customer orders and shipments."}
-                  {activeTab === "discounts" && "Create promo codes and discount coupons."}
-                  {activeTab === "customers" && "View your customers and order history."}
-                  {activeTab === "reviews" && "Manage customer ratings and reviews."}
-                  {activeTab === "banners" && "Upload storefront hero promotional banners."}
-                  {activeTab === "themes" && "Customize your storefront theme and style."}
-                  {activeTab === "billing" && "Manage your subscription plan and limits."}
-                  {activeTab === "settings" && "Configure payments, payouts, and store details."}
-                  {activeTab === "plugins" && "Email alerts and customer notifications."}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0 self-start md:self-start pt-1">
-            {/* Notification Center Trigger */}
-            <button
-              onClick={() => setIsNotificationOpen(true)}
-              className="relative p-2.5 rounded-full bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 shadow-2xs transition-all hover:scale-105"
-              title="Notification Center"
-            >
-              <Bell className="w-4 h-4" />
-              {hasUnreadNotifications && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-              )}
-            </button>
-
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(storePublicUrl);
-                setCopiedLink(true);
-                setTimeout(() => setCopiedLink(false), 2000);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              title={`Copy store URL: ${storeWebDomain}`}
-            >
-              {copiedLink ? <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-neutral-600" />}
-              <span>{copiedLink ? "Copied" : "Copy Link"}</span>
-            </button>
-
-            <Link href={liveStoreUrl} target="_blank">
-              <Button size="sm" className="bg-[#141517] text-white hover:bg-black rounded-xl text-xs gap-1.5 shadow-2xs h-9 px-4 font-semibold">
-                <span>Visit Live Store</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-          </div>
-        </header>
-
+      <div className="pt-16 md:pl-64 flex flex-col min-h-screen">
         {/* Main Workspace Area (Scrolls smoothly under the fixed top header) */}
         <main className="flex-1 p-4 sm:p-8 pb-28 md:pb-12 max-w-7xl w-full mx-auto">
+          {/* Page title (overview greets you inside the hero card) */}
+          {activeTab !== "overview" && (
+            <div className="mb-6 sm:mb-8 hero-rise">
+              <h1 className="text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">{pageTitles[activeTab].title}</h1>
+              <p className="mt-1 text-sm text-neutral-500">{pageTitles[activeTab].text}</p>
+            </div>
+          )}
+
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-6 animate-enter-blur">
-
-            {/* Feature 3: Product Quota Usage Banner (Dark Card from reference screenshot) */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-[#141517] text-white border border-neutral-800 shadow-sm relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-              {/* Left Column: Progress & Limit */}
-              <div className="flex-1 max-w-xl">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <span className="text-sm sm:text-base font-bold text-white tracking-tight">
-                    {store.products.length} of {currentPlan.maxProducts >= 9999 ? "unlimited" : currentPlan.maxProducts} free products used
+              {/* Row 1 — greeting + featured revenue tile and three stat tiles */}
+              <div className="hero-rise flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+                    {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
                   </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700/80">
-                    {store.planId}
-                  </span>
+                  <h1 className="mt-1 text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">
+                    {greetingTime}, {ownerName.split(" ")[0]}
+                  </h1>
                 </div>
+                <a
+                  href={liveStoreUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400 transition-colors"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {storeWebDomain}
+                </a>
+              </div>
 
-                {/* Smooth Gradient Progress Bar */}
-                <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden mb-2">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#A855F7] via-[#6366F1] to-[#10B981] transition-all duration-500"
-                    style={{
-                      width: `${Math.min(100, Math.max(8, (store.products.length / (currentPlan.maxProducts >= 9999 ? 100 : currentPlan.maxProducts)) * 100))}%`,
-                    }}
+              <section
+                style={{ animationDelay: "100ms" }}
+                className="hero-rise grid grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-3"
+              >
+                {/* Revenue — featured tile */}
+                <div className="group col-span-3 lg:col-span-1 relative overflow-hidden rounded-2xl bg-neutral-950 text-white px-5 py-5 sm:px-6 transition-transform duration-300 hover:-translate-y-0.5">
+                  <IndianRupee
+                    aria-hidden
+                    className="absolute -right-6 -bottom-8 w-40 h-40 text-white/[0.06] transition-transform duration-700 group-hover:-rotate-12 group-hover:scale-110"
                   />
-                </div>
-
-                <p className="text-xs text-neutral-400 font-normal">
-                  Starter plan lets you add up to 100 products and custom domain unlocks.
-                </p>
-              </div>
-
-              {/* Right Column: CTA */}
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-300">
-                  <Sparkles className="w-4 h-4 text-neutral-300 shrink-0" />
-                  <span className="max-w-[210px] leading-tight">
-                    Unlock more products, custom domain and premium features.
+                  <span aria-hidden className="absolute -top-16 -left-10 w-40 h-40 rounded-full bg-emerald-400/20 blur-3xl" />
+                  <span className="relative flex items-center justify-between">
+                    <span className="text-xs font-medium text-white/60">Revenue · {analyticsData.label.toLowerCase()}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                      <TrendingUp className="w-3 h-3" />
+                      {analyticsData.deltaPercent}
+                    </span>
                   </span>
-                </div>
-
-                <button
-                  onClick={() => setActiveTab("billing")}
-                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-100 text-neutral-900 text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5"
-                >
-                  <span>See plans from ₹499/mo</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Features 4, 5, 6, 7, 8, 9: Store Performance Card with Sparkline & Filters */}
-            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-neutral-200/90 shadow-xs space-y-6">
-              {/* Header with Title and Time-Range Filters */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-neutral-800" />
-                  <span className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider">
-                    Store Performance
+                  <span className="relative mt-3 block text-[2.2rem] sm:text-[2.5rem] font-semibold tracking-tight tabular-nums leading-none">
+                    <CountUp from={0} to={Math.round(analyticsData.revenue / 100)} prefix="₹" />
                   </span>
+                  <span className="relative mt-2 block text-[11px] text-white/45">{analyticsData.periodText}</span>
                 </div>
 
-                {/* Feature 4: Time-Range Filters (Today, Yesterday, 7D, 30D) */}
-                <div className="inline-flex items-center p-1 rounded-xl bg-neutral-100 border border-neutral-200/60 shrink-0 self-start sm:self-auto">
-                  {(["today", "yesterday", "7d", "30d"] as const).map((range) => {
-                    const isActive = timeRange === range;
-                    const labels: Record<string, string> = {
-                      today: "Today",
-                      yesterday: "Yesterday",
-                      "7d": "7D",
-                      "30d": "30D",
-                    };
-                    return (
-                      <button
-                        key={range}
-                        onClick={() => setTimeRange(range)}
-                        className={`px-3.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                          isActive
-                            ? "bg-[#18181B] text-white shadow-xs"
-                            : "text-neutral-500 hover:text-neutral-900"
-                        }`}
-                      >
-                        {labels[range]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Big Revenue Stat with Delta Badge */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
-                  ₹{(analyticsData.revenue / 100).toLocaleString("en-IN")}
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-[#EAF8F1] px-2.5 py-1 rounded-full border border-emerald-200/70">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>{analyticsData.deltaPercent}</span>
-                </span>
-                <span className="text-xs text-neutral-500 font-medium">
-                  {analyticsData.periodText}
-                </span>
-              </div>
-
-              {/* Feature 6: Visual Sales Trend Graph with Y-Axis & Horizontal Grids */}
-              <div className="relative pt-2">
-                <div className="flex items-stretch gap-3">
-                  {/* Y-Axis Labels */}
-                  <div className="flex flex-col justify-between text-[11px] font-medium text-neutral-400 select-none pb-5 text-right w-6 shrink-0">
-                    <span>3K</span>
-                    <span>2K</span>
-                    <span>1K</span>
-                    <span>0</span>
-                  </div>
-
-                  {/* Chart Area */}
-                  <div className="flex-1 min-w-0">
-                    <div className="w-full h-36 sm:h-44 relative">
-                      <svg className="w-full h-full overflow-visible" viewBox="0 0 500 120" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="performanceAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
-                            <stop offset="70%" stopColor="#10B981" stopOpacity="0.06" />
-                            <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-
-                        {/* Horizontal Grid Lines */}
-                        <line x1="0" y1="10" x2="500" y2="10" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
-                        <line x1="0" y1="45" x2="500" y2="45" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
-                        <line x1="0" y1="80" x2="500" y2="80" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
-                        <line x1="0" y1="115" x2="500" y2="115" stroke="#F1F5F9" strokeWidth="1" />
-
-                        {/* Area Fill */}
-                        <path
-                          d={analyticsData.areaPath}
-                          fill="url(#performanceAreaGrad)"
-                        />
-
-                        {/* Line Stroke */}
-                        <path
-                          d={analyticsData.linePath}
-                          fill="none"
-                          stroke="#10B981"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-
-                        {/* Points along the path */}
-                        {analyticsData.chartPoints.map((pt, idx) => (
-                          <circle
-                            key={idx}
-                            cx={pt.x}
-                            cy={pt.y}
-                            r="3.5"
-                            fill="#10B981"
-                            stroke="#FFFFFF"
-                            strokeWidth="2"
-                          />
-                        ))}
-
-                        {/* Latest point marker */}
-                        <circle cx={analyticsData.lastPoint.x} cy={analyticsData.lastPoint.y} r="5" fill="#10B981" />
-                      </svg>
-                    </div>
-
-                    {/* X-Axis Time Markers */}
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400 font-medium pt-2 border-t border-neutral-100">
-                      {analyticsData.xLabels.map((lbl, idx) => (
-                        <span key={idx}>{lbl}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 7 & 8: 4 Responsive Metric Cards (Orders, Page Views, Visitors, Conversion Rate) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-                {/* Card 1: Orders */}
-                <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-neutral-200/70 hover:bg-neutral-100/60 transition-all flex items-center justify-between group cursor-pointer hover-lift animate-enter-slide-up stagger-1">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-800 shrink-0 shadow-2xs">
-                      <ShoppingBag className="w-5 h-5 text-neutral-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                        <span>Orders</span>
-                        <Info className="w-3 h-3 text-neutral-400" />
-                      </div>
-                      <span className="text-2xl font-black text-neutral-900 tracking-tight block mt-0.5">
-                        {analyticsData.ordersCount}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-0.5">
-                        <TrendingUp className="w-3 h-3 shrink-0" />
-                        <span>{analyticsData.ordersDelta}</span>
-                        <span className="text-neutral-400 font-normal">vs yesterday</span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors shrink-0 ml-2" />
-                </div>
-
-                {/* Card 2: Page Views */}
-                <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-neutral-200/70 hover:bg-neutral-100/60 transition-all flex items-center justify-between group cursor-pointer hover-lift animate-enter-slide-up stagger-2">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-800 shrink-0 shadow-2xs">
-                      <Eye className="w-5 h-5 text-neutral-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                        <span>Page Views</span>
-                        <Info className="w-3 h-3 text-neutral-400" />
-                      </div>
-                      <span className="text-2xl font-black text-neutral-900 tracking-tight block mt-0.5">
-                        {analyticsData.pageViews.toLocaleString()}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-0.5">
-                        <TrendingUp className="w-3 h-3 shrink-0" />
-                        <span>{analyticsData.pageViewsDelta}</span>
-                        <span className="text-neutral-400 font-normal">vs yesterday</span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors shrink-0 ml-2" />
-                </div>
-
-                {/* Card 3: Visitors */}
-                <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-neutral-200/70 hover:bg-neutral-100/60 transition-all flex items-center justify-between group cursor-pointer hover-lift animate-enter-slide-up stagger-3">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-800 shrink-0 shadow-2xs">
-                      <Users className="w-5 h-5 text-neutral-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                        <span>Visitors</span>
-                        <Info className="w-3 h-3 text-neutral-400" />
-                      </div>
-                      <span className="text-2xl font-black text-neutral-900 tracking-tight block mt-0.5">
-                        {analyticsData.visitors.toLocaleString()}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-0.5">
-                        <TrendingUp className="w-3 h-3 shrink-0" />
-                        <span>{analyticsData.visitorsDelta}</span>
-                        <span className="text-neutral-400 font-normal">vs yesterday</span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors shrink-0 ml-2" />
-                </div>
-
-                {/* Card 4: Conversion Rate */}
-                <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-neutral-200/70 hover:bg-neutral-100/60 transition-all flex items-center justify-between group cursor-pointer hover-lift animate-enter-slide-up stagger-4">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-800 shrink-0 shadow-2xs">
-                      <ShoppingCart className="w-5 h-5 text-neutral-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                        <span>Conversion Rate</span>
-                        <Info className="w-3 h-3 text-neutral-400" />
-                      </div>
-                      <span className="text-2xl font-black text-neutral-900 tracking-tight block mt-0.5">
-                        {analyticsData.conversionRate}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-0.5">
-                        <TrendingUp className="w-3 h-3 shrink-0" />
-                        <span>{analyticsData.conversionRateDelta}</span>
-                        <span className="text-neutral-400 font-normal">vs yesterday</span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors shrink-0 ml-2" />
-                </div>
-              </div>
-
-              {/* Feature 9: "All metrics ⌵" Expandable Drawer */}
-              <div className="pt-2 border-t border-neutral-100">
-                <button
-                  onClick={() => setIsAllMetricsExpanded(!isAllMetricsExpanded)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-black transition-colors"
-                >
-                  <span>All metrics</span>
-                  {isAllMetricsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-
-                {isAllMetricsExpanded && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4 pt-3 border-t border-dashed border-neutral-200">
-                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200/80">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Net GMV</span>
-                      <span className="text-base font-extrabold text-neutral-900 mt-1 block">
-                        ₹{(totalRevenue / 100).toLocaleString("en-IN")}
-                      </span>
-                      <span className="text-[10px] text-neutral-500 mt-0.5 block">Delivered revenue</span>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200/80">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Avg Order Value</span>
-                      <span className="text-base font-extrabold text-neutral-900 mt-1 block">
-                        ₹{totalOrders > 0 ? Math.round(totalRevenue / totalOrders / 100).toLocaleString("en-IN") : 0}
-                      </span>
-                      <span className="text-[10px] text-neutral-500 mt-0.5 block">AOV per checkout</span>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200/80">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Conversion Rate</span>
-                      <span className="text-base font-extrabold text-neutral-900 mt-1 block">3.8%</span>
-                      <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">+0.6% vs avg</span>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200/80">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Add to Cart</span>
-                      <span className="text-base font-extrabold text-neutral-900 mt-1 block">12.4%</span>
-                      <span className="text-[10px] text-neutral-500 mt-0.5 block">Cart initiation</span>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200/80 col-span-2 sm:col-span-1">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Repeat Buyers</span>
-                      <span className="text-base font-extrabold text-neutral-900 mt-1 block">24.5%</span>
-                      <span className="text-[10px] text-neutral-500 mt-0.5 block">Customer retention</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Action Center & Catalog Insights (Non-redundant, high-value workspace) */}
-            <div className="space-y-4">
-              {/* Instant 1-Click Operations Strip */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-white border border-neutral-200/90 shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-neutral-900 tracking-tight">Quick Actions:</span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
+                {[
+                  {
+                    label: "Orders",
+                    icon: ShoppingBag,
+                    tab: "orders" as const,
+                    value: <CountUp from={0} to={Number(analyticsData.ordersCount) || 0} />,
+                    pill: analyticsData.ordersDelta,
+                    tone: { chip: "bg-indigo-50 text-indigo-600", pill: "bg-indigo-50 text-indigo-700", line: "bg-indigo-500" },
+                  },
+                  {
+                    label: "Conversion",
+                    icon: ShoppingCart,
+                    value: analyticsData.conversionRate,
+                    pill: analyticsData.conversionRateDelta,
+                    tone: { chip: "bg-amber-50 text-amber-600", pill: "bg-amber-50 text-amber-700", line: "bg-amber-500" },
+                  },
+                  {
+                    label: "Products",
+                    icon: Package,
+                    tab: "products" as const,
+                    value: <CountUp from={0} to={totalProducts} />,
+                    pill: currentPlan.maxProducts >= 9999 ? "∞" : `${Math.max(0, currentPlan.maxProducts - totalProducts)} left`,
+                    tone: { chip: "bg-violet-50 text-violet-600", pill: "bg-violet-50 text-violet-700", line: "bg-violet-500" },
+                  },
+                ].map((m) => (
                   <button
+                    key={m.label}
+                    type="button"
+                    onClick={() => m.tab && setActiveTab(m.tab)}
+                    className={`group relative overflow-hidden rounded-2xl bg-white border border-neutral-200 text-left p-3.5 sm:px-5 sm:py-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-22px_rgba(0,0,0,0.3)] ${
+                      m.tab ? "cursor-pointer" : "cursor-default"
+                    }`}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className={`w-8 h-8 rounded-[10px] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 ${m.tone.chip}`}>
+                        <m.icon className="w-4 h-4" />
+                      </span>
+                      <span className={`hidden sm:inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.tone.pill}`}>{m.pill}</span>
+                    </span>
+                    <span className="mt-3 block text-[1.4rem] sm:text-[1.75rem] font-semibold tracking-tight tabular-nums leading-none">{m.value}</span>
+                    <span className="mt-1.5 block text-[11px] text-neutral-500 truncate">{m.label}</span>
+                    {/* accent line that grows on hover */}
+                    <span className={`absolute left-0 bottom-0 h-[3px] w-full origin-left scale-x-[0.18] group-hover:scale-x-100 transition-transform duration-500 ${m.tone.line}`} />
+                  </button>
+                ))}
+              </section>
+
+              {/* Row 2 — main column + side column */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Main column */}
+                <div style={{ animationDelay: "320ms" }} className="hero-rise lg:col-span-2 space-y-6">
+                  {/* Sales chart */}
+                  <div className="rounded-2xl bg-white border border-neutral-200">
+                    <div className="px-5 sm:px-6 pt-5 sm:pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-sm font-semibold">Sales</h2>
+                        <p className="text-xs text-neutral-500 mt-0.5">Revenue {analyticsData.periodText}</p>
+                      </div>
+                      <div className="inline-flex items-center p-0.5 rounded-[10px] border border-neutral-200 shrink-0 self-start sm:self-auto">
+                        {(["today", "yesterday", "7d", "30d"] as const).map((range) => {
+                          const isActive = timeRange === range;
+                          const labels: Record<string, string> = { today: "Today", yesterday: "Yesterday", "7d": "7D", "30d": "30D" };
+                          return (
+                            <button
+                              key={range}
+                              onClick={() => setTimeRange(range)}
+                              className={`px-3 h-7 rounded-[8px] text-xs font-medium transition-colors ${
+                                isActive ? "bg-black text-white" : "text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100"
+                              }`}
+                            >
+                              {labels[range]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="px-5 sm:px-6 pt-6 pb-5">
+                      <div className="flex items-stretch gap-3">
+                        <div className="flex flex-col justify-between text-[11px] text-neutral-400 select-none pb-6 text-right w-6 shrink-0 tabular-nums">
+                          <span>3K</span>
+                          <span>2K</span>
+                          <span>1K</span>
+                          <span>0</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="w-full h-48 sm:h-56 relative">
+                            <svg className="w-full h-full overflow-visible" viewBox="0 0 500 120" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="performanceAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#6366F1" stopOpacity="0.22" />
+                                  <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
+                                </linearGradient>
+                                <linearGradient id="performanceLineGrad" x1="0" y1="0" x2="1" y2="0">
+                                  <stop offset="0%" stopColor="#6366F1" />
+                                  <stop offset="100%" stopColor="#A855F7" />
+                                </linearGradient>
+                              </defs>
+                              <line x1="0" y1="10" x2="500" y2="10" stroke="#EDEDED" strokeWidth="1" strokeDasharray="3 4" />
+                              <line x1="0" y1="45" x2="500" y2="45" stroke="#EDEDED" strokeWidth="1" strokeDasharray="3 4" />
+                              <line x1="0" y1="80" x2="500" y2="80" stroke="#EDEDED" strokeWidth="1" strokeDasharray="3 4" />
+                              <line x1="0" y1="115" x2="500" y2="115" stroke="#E5E5E5" strokeWidth="1" />
+                              {/* keyed by range so the line redraws when you switch */}
+                              <path key={`area-${timeRange}`} className="chart-fade" d={analyticsData.areaPath} fill="url(#performanceAreaGrad)" />
+                              <path
+                                key={`line-${timeRange}`}
+                                className="chart-draw"
+                                pathLength={1}
+                                d={analyticsData.linePath}
+                                fill="none"
+                                stroke="url(#performanceLineGrad)"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              {analyticsData.chartPoints.map((pt, idx) => (
+                                <circle
+                                  key={`${timeRange}-${idx}`}
+                                  className="chart-pop"
+                                  style={{ animationDelay: `${700 + idx * 70}ms` }}
+                                  cx={pt.x}
+                                  cy={pt.y}
+                                  r="3"
+                                  fill="#FFFFFF"
+                                  stroke="#6366F1"
+                                  strokeWidth="1.5"
+                                />
+                              ))}
+                              <circle cx={analyticsData.lastPoint.x} cy={analyticsData.lastPoint.y} r="10" fill="#A855F7" opacity="0.18" className="animate-ping [transform-box:fill-box] [transform-origin:center]" />
+                              <circle cx={analyticsData.lastPoint.x} cy={analyticsData.lastPoint.y} r="4.5" fill="#A855F7" />
+                            </svg>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-2 border-t border-neutral-200 tabular-nums">
+                            {analyticsData.xLabels.map((lbl, idx) => (
+                              <span key={idx}>{lbl}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* More metrics */}
+                    <div className="border-t border-neutral-200 px-5 sm:px-6 py-3.5">
+                      <button
+                        onClick={() => setIsAllMetricsExpanded(!isAllMetricsExpanded)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:text-black transition-colors"
+                      >
+                        {isAllMetricsExpanded ? "Hide metrics" : "All metrics"}
+                        {isAllMetricsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      {isAllMetricsExpanded && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                          {[
+                            { label: "Page views", value: analyticsData.pageViews.toLocaleString(), note: `${analyticsData.pageViewsDelta} vs yesterday` },
+                            { label: "Net GMV", value: `₹${(totalRevenue / 100).toLocaleString("en-IN")}`, note: "Delivered revenue" },
+                            { label: "Avg. order value", value: `₹${totalOrders > 0 ? Math.round(totalRevenue / totalOrders / 100).toLocaleString("en-IN") : 0}`, note: "Per checkout" },
+                            { label: "Conversion rate", value: "3.8%", note: "+0.6% vs average" },
+                            { label: "Add to cart", value: "12.4%", note: "Cart starts" },
+                            { label: "Repeat buyers", value: "24.5%", note: "Customer retention" },
+                          ].map((m) => (
+                            <div key={m.label} className="p-3.5 rounded-[10px] border border-neutral-200">
+                              <span className="text-[11px] text-neutral-500 block">{m.label}</span>
+                              <span className="text-base font-semibold mt-1 block tabular-nums">{m.value}</span>
+                              <span className="text-[11px] text-neutral-400 mt-0.5 block">{m.note}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Orders to fulfil */}
+                  <div className="rounded-2xl bg-white border border-neutral-200 p-5 sm:p-6">
+                    {unfulfilledOrders.length > 0 ? (
+                      <div>
+                        <div className="flex items-start justify-between gap-4 mb-2">
+                          <div>
+                            <h2 className="text-sm font-semibold">
+                              {unfulfilledOrders.length} order{unfulfilledOrders.length > 1 ? "s" : ""} to fulfil
+                            </h2>
+                            <p className="text-xs text-neutral-500 mt-0.5">Add tracking and ship to keep customers updated.</p>
+                          </div>
+                          <button
+                            onClick={() => setActiveTab("orders")}
+                            className="h-8 px-3 rounded-[8px] border border-neutral-200 text-xs font-semibold hover:border-black transition-colors shrink-0"
+                          >
+                            View all
+                          </button>
+                        </div>
+                        <div className="divide-y divide-neutral-200">
+                          {unfulfilledOrders.slice(0, 4).map((order) => (
+                            <div key={order.id} className="py-3.5 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-semibold tabular-nums">{order.number}</span>
+                                  <span className="text-sm text-neutral-700 truncate">{order.customer.name}</span>
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-[6px] border border-neutral-200 text-neutral-600">
+                                    {order.paymentMethod}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-neutral-500 mt-0.5">
+                                  {order.items.length} item{order.items.length > 1 ? "s" : ""} · ₹{(order.total / 100).toLocaleString("en-IN")} · {order.address.city}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setSelectedOrder(order)}
+                                className="h-8 px-3.5 rounded-[8px] bg-black text-white text-xs font-semibold hover:bg-neutral-800 transition-colors shrink-0"
+                              >
+                                Fulfil
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                          <span aria-hidden className="absolute inset-0 rounded-full bg-emerald-200 animate-ping opacity-40" />
+                          <Check className="relative w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-sm font-semibold">You&apos;re all caught up</h2>
+                          <p className="text-xs text-neutral-500 mt-0.5">No orders waiting to ship. Share your store to bring in the next one.</p>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab("orders")}
+                          className="h-8 px-3 rounded-[8px] border border-neutral-200 text-xs font-semibold hover:border-black transition-colors shrink-0"
+                        >
+                          All orders
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Side column */}
+                <div style={{ animationDelay: "420ms" }} className="hero-rise space-y-6">
+                  {/* Your store */}
+                  <div className="relative overflow-hidden rounded-2xl bg-black text-white p-5">
+                    <span aria-hidden className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-indigo-500/40 blur-3xl animate-float-gentle" />
+                    <span aria-hidden className="absolute -bottom-20 -left-12 w-44 h-44 rounded-full bg-fuchsia-500/25 blur-3xl animate-float-gentle [animation-delay:1.5s]" />
+                    <div className="relative flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">Your store</span>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/80">
+                        <span className="relative flex w-2 h-2">
+                          <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                          <span className="relative w-2 h-2 rounded-full bg-emerald-400" />
+                        </span>
+                        Live
+                      </span>
+                    </div>
+                    <p className="relative mt-3 text-lg font-semibold tracking-tight truncate">{store.name}</p>
+                    <p className="relative text-xs text-white/60 truncate">{storeWebDomain}</p>
+                    <div className="relative mt-4 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(storePublicUrl);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }}
+                        className="h-9 rounded-[10px] border border-white/20 text-xs font-semibold hover:bg-white/10 inline-flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        {copiedLink ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedLink ? "Copied" : "Copy link"}
+                      </button>
+                      <Link
+                        href={liveStoreUrl}
+                        target="_blank"
+                        className="h-9 rounded-[10px] bg-white text-black text-xs font-semibold hover:bg-neutral-200 inline-flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        Open
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Plan usage */}
+                  <div className="rounded-2xl bg-white border border-neutral-200 p-5">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-semibold">Plan</h2>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-[6px] border border-neutral-200 text-neutral-600">
+                        {store.planId}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs text-neutral-500">
+                      <span className="text-neutral-950 font-semibold tabular-nums">{store.products.length}</span> of{" "}
+                      {currentPlan.maxProducts >= 9999 ? "unlimited" : currentPlan.maxProducts} products used
+                    </p>
+                    <div className="mt-2 w-full h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+                      <div
+                        className="bar-grow h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                        style={{
+                          width: `${Math.min(100, Math.max(4, (store.products.length / (currentPlan.maxProducts >= 9999 ? 100 : currentPlan.maxProducts)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("billing")}
+                      className="mt-4 w-full h-9 rounded-[10px] border border-neutral-300 text-xs font-semibold hover:border-black hover:bg-black hover:text-white inline-flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      See plans from ₹499/mo
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Platform banners (uploaded from the admin dashboard) */}
+              <div className="hero-rise" style={{ animationDelay: "480ms" }}>
+                <AnnouncementBanners onOpenTab={(tab) => setActiveTab(tab as DashTab)} />
+              </div>
+
+              {/* Quick actions — bento of six */}
+              <section className="hero-rise" style={{ animationDelay: "520ms" }}>
+                <h2 className="mb-3 text-sm font-semibold">Quick actions</h2>
+                <div className="grid grid-cols-3 grid-rows-[repeat(4,124px)] gap-3">
+                  {/* Add product — wide, top */}
+                  <button
+                    type="button"
                     onClick={() => {
                       if (!productQuota.allowed) {
                         setActiveTab("billing");
@@ -2049,130 +1978,474 @@ function DashboardPageContent() {
                       resetProductForm();
                       setIsProductModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111111] text-white hover:bg-black text-xs font-semibold shadow-2xs transition-all hover:scale-[1.02]"
+                    className="group relative overflow-hidden col-span-3 text-left rounded-2xl bg-neutral-950 text-white px-5 sm:px-7 flex items-center justify-between gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_48px_-24px_rgba(0,0,0,0.6)]"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Product</span>
+                    <span aria-hidden className="pointer-events-none absolute -left-16 -top-20 w-64 h-64 rounded-full bg-indigo-500/25 blur-3xl transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
+                    <span className="relative min-w-0">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Catalogue</span>
+                      <span className="mt-1 block text-lg sm:text-xl font-semibold">Add product</span>
+                      <span className="hidden sm:block text-xs text-white/55 truncate">
+                        {totalProducts} listed · {currentPlan.maxProducts >= 9999 ? "unlimited" : `${Math.max(0, currentPlan.maxProducts - totalProducts)} slots left`}
+                      </span>
+                    </span>
+                    <span className="relative flex items-center shrink-0">
+                      <span className="hidden sm:flex -space-x-3 mr-4">
+                        {productThumbs.map((src, i) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={src + i}
+                            src={src}
+                            alt=""
+                            className="w-12 h-12 rounded-[12px] object-cover ring-2 ring-neutral-950 transition-transform duration-300 group-hover:-translate-y-1"
+                            style={{ transitionDelay: `${i * 50}ms` }}
+                          />
+                        ))}
+                      </span>
+                      <span className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center transition-transform duration-500 group-hover:rotate-90 group-hover:scale-105">
+                        <Plus className="w-5 h-5" />
+                      </span>
+                    </span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setDCode("");
-                      setDType("percentage");
-                      setDValue("");
-                      setDMinOrder("");
-                      setDMaxDiscount("");
-                      setDIsActive(true);
-                      setIsDiscountModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-semibold shadow-2xs transition-all"
-                  >
-                    <Tag className="w-3.5 h-3.5" />
-                    <span>New Coupon</span>
+                  {/* Reviews — small */}
+                  <button type="button" onClick={() => setActiveTab("reviews")} className={`group relative overflow-hidden text-left rounded-2xl bg-white border border-neutral-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.3)] p-3 sm:p-4 flex flex-col justify-between`}>
+                    <span className="w-9 h-9 rounded-[10px] bg-amber-50 text-amber-500 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                      <Star className="w-4 h-4 fill-current" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold">Reviews</span>
+                      <span className="hidden sm:block text-[11px] text-neutral-500 truncate">
+                        {store.reviews.length ? `${reviewAvg.toFixed(1)} ★ · ${store.reviews.length}` : "None yet"}
+                      </span>
+                    </span>
                   </button>
 
-                  <button
-                    onClick={openAddCategory}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border border-neutral-200 text-xs font-semibold shadow-2xs transition-all"
-                  >
-                    <FolderTree className="w-3.5 h-3.5" />
-                    <span>New Collection</span>
+                  {/* Categories — wide */}
+                  <button type="button" onClick={() => setActiveTab("categories")} className={`group relative overflow-hidden text-left rounded-2xl bg-white border border-neutral-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.3)] col-span-2 p-4 sm:p-5 flex flex-col justify-between`}>
+                    <span className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-[10px] bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110">
+                        <FolderTree className="w-4 h-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">Categories</span>
+                        <span className="hidden sm:block text-[11px] text-neutral-500">{store.categories.length} in your store</span>
+                      </span>
+                    </span>
+                    <span className="flex gap-1.5 overflow-hidden">
+                      {store.categories.slice(0, 4).map((c, i) => (
+                        <span
+                          key={c.id}
+                          className={`shrink-0 rounded-full border border-neutral-200 px-2.5 py-1 text-[11px] font-medium text-neutral-600 transition-colors duration-300 group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-700 ${i > 0 ? "hidden sm:inline" : ""}`}
+                          style={{ transitionDelay: `${i * 40}ms` }}
+                        >
+                          {c.name}
+                        </span>
+                      ))}
+                      {store.categories.length === 0 && <span className="text-[11px] text-neutral-400">Add your first category</span>}
+                    </span>
                   </button>
 
+                  {/* Settings — small */}
+                  <button type="button" onClick={() => setActiveTab("settings")} className={`group relative overflow-hidden text-left rounded-2xl bg-white border border-neutral-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.3)] col-start-1 row-start-3 p-3 sm:p-4 flex flex-col justify-between`}>
+                    <span className="w-9 h-9 rounded-[10px] bg-neutral-100 text-neutral-700 flex items-center justify-center">
+                      <Settings className="w-4 h-4 transition-transform duration-700 group-hover:rotate-180" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold">Settings</span>
+                      <span className="hidden sm:block text-[11px] text-neutral-500 truncate">Payments &amp; store</span>
+                    </span>
+                  </button>
+
+                  {/* Themes — big */}
                   <button
-                    onClick={() => {
-                      const msg = encodeURIComponent(`Shop our collection on ${store.name} 👉 ${storePublicUrl}`);
-                      window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-all"
-                    title="Share store catalog on WhatsApp"
+                    type="button"
+                    onClick={() => setActiveTab("themes")}
+                    className={`group relative overflow-hidden text-left rounded-2xl bg-white border border-neutral-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.3)] col-start-2 col-span-2 row-start-3 row-span-2 p-4 sm:p-5 flex flex-col lg:flex-row gap-4`}
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp Share</span>
+                    <span className="flex flex-col justify-between lg:w-[42%] shrink-0 min-w-0">
+                      <span className="w-9 h-9 rounded-[10px] bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                        <Palette className="w-4 h-4" />
+                      </span>
+                      <span className="hidden lg:block">
+                        <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Current theme</span>
+                        <span className="mt-1 block text-xl font-semibold tracking-tight">{activeTheme.name}</span>
+                        <span className="mt-1 block text-xs text-neutral-500 line-clamp-2">{activeTheme.tagline}</span>
+                      </span>
+                      <span className="block lg:hidden">
+                        <span className="block text-sm font-semibold">Themes</span>
+                        <span className="hidden sm:block text-[11px] text-neutral-500 truncate">{activeTheme.name}</span>
+                      </span>
+                      <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold">
+                        Change theme
+                      </span>
+                    </span>
+
+                    {/* mini storefront in the theme's own colours */}
+                    <span
+                      aria-hidden
+                      className="relative flex-1 min-h-0 rounded-[12px] border overflow-hidden flex flex-col transition-transform duration-500 group-hover:scale-[1.02]"
+                      style={{ background: activeTheme.tokens.background, borderColor: activeTheme.tokens.border, color: activeTheme.tokens.foreground }}
+                    >
+                      <span className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: activeTheme.tokens.border }}>
+                        <span className="text-[10px] font-bold truncate">{store.name}</span>
+                        <span className="flex gap-1">
+                          <span className="w-4 h-1 rounded-full opacity-40" style={{ background: activeTheme.tokens.foreground }} />
+                          <span className="w-4 h-1 rounded-full opacity-40" style={{ background: activeTheme.tokens.foreground }} />
+                        </span>
+                      </span>
+                      <span className="mx-3 mt-2 rounded-[8px] h-10 lg:h-14 flex items-center px-3" style={{ background: activeTheme.tokens.primary, color: activeTheme.tokens.primaryForeground }}>
+                        <span className="text-[10px] font-semibold">New arrivals</span>
+                      </span>
+                      <span className="flex-1 grid grid-cols-3 gap-1.5 p-3">
+                        {[0, 1, 2].map((i) => (
+                          <span key={i} className="rounded-[6px] overflow-hidden" style={{ background: activeTheme.tokens.muted }}>
+                            {productThumbs[i] && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={productThumbs[i]} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    </span>
+                  </button>
+
+                  {/* Banners — small */}
+                  <button type="button" onClick={() => setActiveTab("banners")} className={`group relative overflow-hidden text-left rounded-2xl bg-white border border-neutral-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.3)] col-start-1 row-start-4 p-3 sm:p-4 flex flex-col justify-between`}>
+                    <span className="w-9 h-9 rounded-[10px] bg-pink-50 text-pink-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                      <ImageIcon className="w-4 h-4" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold">Banners</span>
+                      <span className="hidden sm:block text-[11px] text-neutral-500 truncate">{liveBanners} live</span>
+                    </span>
                   </button>
                 </div>
-              </div>
-            </div>
+              </section>
 
-            {/* Feature 11: Unfulfilled Orders Action Card (Matches Ooulet empty state or pending cards) */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-neutral-200/90 shadow-xs">
-              {unfulfilledOrders.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                        <Truck className="w-4 h-4" />
-                      </div>
+              {/* Setup checklist */}
+              {(() => {
+                const steps = [
+                  { label: "Add your store logo", done: Boolean(store.logoUrl), tab: "settings" as const },
+                  { label: `Add 5 products (${Math.min(totalProducts, 5)}/5)`, done: totalProducts >= 5, tab: "products" as const },
+                  { label: "Set up UPI payments", done: Boolean(store.upiId?.trim()), tab: "settings" as const },
+                  { label: "Upload a storefront banner", done: store.banners.length > 0, tab: "banners" as const },
+                  { label: "Create a discount code", done: (store.discounts?.length || 0) > 0, tab: "discounts" as const },
+                  { label: "Link your Instagram", done: Boolean(store.instagramHandle?.trim()), tab: "settings" as const },
+                ];
+                const doneCount = steps.filter((st) => st.done).length;
+                const allDone = doneCount === steps.length;
+                return (
+                  <section className="hero-rise rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6" style={{ animationDelay: "600ms" }}>
+                    <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h4 className="text-xs sm:text-sm font-bold text-neutral-900">
-                          {unfulfilledOrders.length} order{unfulfilledOrders.length > 1 ? "s" : ""} awaiting dispatch
-                        </h4>
-                        <p className="text-[11px] text-neutral-500">
-                          Provide courier tracking and fulfill shipments to update customer statuses
+                        <h2 className="text-sm font-semibold">{allDone ? "Your store is fully set up" : "Finish setting up your store"}</h2>
+                        <p className="mt-0.5 text-xs text-neutral-500">
+                          {allDone ? "Nice work. Keep adding products to grow." : "Stores that finish these steps get more orders."}
                         </p>
                       </div>
+                      <span className="shrink-0 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold tabular-nums">
+                        {doneCount} of {steps.length}
+                      </span>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs rounded-md"
-                      onClick={() => setActiveTab("orders")}
-                    >
-                      See all
-                    </Button>
-                  </div>
+                    <div className="mt-4 grid grid-cols-6 gap-1.5">
+                      {steps.map((st, i) => (
+                        <span
+                          key={st.label}
+                          className={`h-1.5 rounded-full transition-colors duration-500 ${i < doneCount ? "bg-emerald-500" : "bg-neutral-200"}`}
+                          style={{ transitionDelay: `${i * 60}ms` }}
+                        />
+                      ))}
+                    </div>
 
-                  <div className="divide-y divide-neutral-100">
-                    {unfulfilledOrders.slice(0, 3).map((order) => (
-                      <div
-                        key={order.id}
-                        className="py-3 flex items-center justify-between gap-3 hover:bg-neutral-50 rounded-lg px-2 transition-colors"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-neutral-900">{order.number}</span>
-                            <span className="text-xs text-neutral-800 font-medium">{order.customer.name}</span>
-                            <Badge variant="neutral" className="text-[9px] uppercase bg-amber-50 text-amber-800 border-amber-200">
-                              {order.paymentMethod}
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-neutral-500 mt-0.5">
-                            {order.items.length} item(s) • ₹{(order.total / 100).toLocaleString("en-IN")} • {order.address.city}
-                          </p>
-                        </div>
-
-                        <Button
-                          size="sm"
-                          className="bg-[#111111] text-white hover:bg-black text-xs h-7 rounded-md"
-                          onClick={() => setSelectedOrder(order)}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                      {steps.map((st) => (
+                        <button
+                          key={st.label}
+                          type="button"
+                          disabled={st.done}
+                          onClick={() => setActiveTab(st.tab)}
+                          className="group flex items-center gap-3 py-2.5 border-b border-neutral-100 md:[&:nth-last-child(-n+2)]:border-b-0 last:border-b-0 text-left disabled:cursor-default"
                         >
-                          Fulfill
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* Exact Ooulet Empty State */
-                <div className="py-6 px-4 text-center space-y-2.5">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
-                    <Check className="w-6 h-6 stroke-[2.5]" />
-                  </div>
-                  <h4 className="text-sm font-extrabold text-neutral-900">You're all caught up</h4>
-                  <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
-                    No pending orders right now — share your store to bring in the next one.
-                  </p>
-                  <div className="pt-1">
-                    <button
-                      onClick={() => setActiveTab("orders")}
-                      className="text-xs font-bold text-neutral-900 hover:text-black underline underline-offset-4 decoration-neutral-300 hover:decoration-black"
+                          {st.done ? (
+                            <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3 h-3" strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="w-5 h-5 rounded-full border-2 border-neutral-300 shrink-0 transition-colors group-hover:border-neutral-900" />
+                          )}
+                          <span className={`flex-1 text-sm ${st.done ? "text-neutral-400 line-through decoration-neutral-300" : "font-medium text-neutral-900"}`}>
+                            {st.label}
+                          </span>
+                          {!st.done && (
+                            <ChevronRight className="w-4 h-4 text-neutral-300 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-neutral-700" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })()}
+
+              {/* Help, legal and social links */}
+              <div className="hero-rise" style={{ animationDelay: "680ms" }}>
+                <HelpAndMore storeName={store.name} />
+              </div>
+            </div>
+          )}
+
+        {/* NOTIFICATIONS PAGE */}
+        {activeTab === "notifications" && (
+          <div className="space-y-4 animate-enter-blur">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-neutral-500">
+                {unreadCount > 0 ? `${unreadCount} unread of ${notifications.length}` : `All ${notifications.length} caught up`}
+              </span>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllNotificationsRead}
+                  className="h-9 px-3.5 rounded-[10px] border border-neutral-200 bg-white text-xs font-semibold hover:border-neutral-900 transition-colors"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+            <div className="rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-100 overflow-hidden">
+              {notifications.map((n) => {
+                const { icon: Icon, tone } = notificationIcon(n.type);
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => openNotification(n)}
+                    className={`w-full flex items-start gap-4 px-4 sm:px-5 py-4 text-left transition-colors hover:bg-neutral-50 ${n.unread ? "bg-indigo-50/30" : ""}`}
+                  >
+                    <span className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${tone}`}>
+                      <Icon className="w-[18px] h-[18px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-3">
+                        <span className={`text-sm ${n.unread ? "font-semibold text-neutral-950" : "font-medium text-neutral-700"}`}>{n.title}</span>
+                        <span className="shrink-0 text-[11px] text-neutral-400">{n.time}</span>
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-neutral-500">{n.desc}</span>
+                    </span>
+                    {n.unread && <span className="mt-2 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* PROFILE PAGE */}
+        {activeTab === "profile" && (
+          <div className="space-y-6 animate-enter-blur">
+            {/* Hero: cover, avatar, identity, quick actions and lifetime stats */}
+            <section className="hero-rise overflow-hidden rounded-[22px] border border-neutral-200 bg-white">
+              <div className="relative h-28 sm:h-36 overflow-hidden bg-gradient-to-br from-indigo-200 via-violet-100 to-rose-100">
+                <span aria-hidden className="absolute -top-16 -left-10 w-64 h-64 rounded-full bg-indigo-400/40 blur-3xl" />
+                <span aria-hidden className="absolute -bottom-20 right-10 w-72 h-72 rounded-full bg-fuchsia-300/40 blur-3xl" />
+                <span
+                  aria-hidden
+                  className="absolute inset-0 opacity-[0.25]"
+                  style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "16px 16px" }}
+                />
+              </div>
+
+              <div className="relative px-5 sm:px-8 pb-6">
+                <div className="flex flex-col gap-4">
+                  <span className="relative -mt-12 sm:-mt-14 w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-full bg-gradient-to-br from-neutral-800 to-black text-white text-3xl font-semibold flex items-center justify-center ring-4 ring-white shadow-[0_16px_40px_-16px_rgba(0,0,0,0.5)]">
+                    {ownerInitials}
+                    <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 ring-[3px] ring-white" title="Store live" />
+                  </span>
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{ownerName}</h2>
+                      <span className="rounded-full bg-neutral-950 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                        {currentPlan.name}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-neutral-500 break-all">{user?.email}</p>
+                    <a
+                      href={liveStoreUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:border-neutral-400 transition-colors"
                     >
-                      See all orders →
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      {store.name} · {storeWebDomain}
+                    </a>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={copyStoreLink}
+                      className="flex-1 sm:flex-none h-10 px-4 rounded-[10px] border border-neutral-200 bg-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:border-neutral-900 transition-colors"
+                    >
+                      {copiedLink ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      {copiedLink ? "Copied" : "Copy link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.open(liveStoreUrl, "_blank")}
+                      className="flex-1 sm:flex-none h-10 px-4 rounded-[10px] bg-neutral-950 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-black transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      View store
                     </button>
                   </div>
+                  </div>
                 </div>
-              )}
+
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200">
+                  {[
+                    { label: "Products", value: <CountUp from={0} to={totalProducts} />, tab: "products" as const },
+                    { label: "Orders", value: <CountUp from={0} to={totalOrders} />, tab: "orders" as const },
+                    { label: "Customers", value: <CountUp from={0} to={totalCustomers} />, tab: "customers" as const },
+                    { label: "Lifetime sales", value: <CountUp from={0} to={Math.round(totalRevenue / 100)} prefix="₹" /> },
+                  ].map((st) => (
+                    <button
+                      key={st.label}
+                      type="button"
+                      onClick={() => st.tab && setActiveTab(st.tab)}
+                      className={`bg-white px-4 py-3.5 text-left transition-colors ${st.tab ? "hover:bg-neutral-50" : "cursor-default"}`}
+                    >
+                      <span className="block text-xl font-semibold tracking-tight tabular-nums">{st.value}</span>
+                      <span className="block text-xs text-neutral-500">{st.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+              {/* Account details */}
+              <section style={{ animationDelay: "100ms" }} className="hero-rise lg:col-span-3 rounded-2xl border border-neutral-200 bg-white">
+                <div className="flex items-center justify-between px-5 pt-5">
+                  <h3 className="text-sm font-semibold">Account details</h3>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("settings")}
+                    className="text-xs font-semibold text-neutral-500 hover:text-black transition-colors"
+                  >
+                    Edit in settings
+                  </button>
+                </div>
+                <div className="mt-2 divide-y divide-neutral-100">
+                  {[
+                    { label: "Full name", value: ownerName, icon: Users },
+                    { label: "Email", value: user?.email || "Not added", icon: Mail },
+                    { label: "Phone", value: store.contactPhone || "Not added", icon: Phone },
+                    { label: "Instagram", value: store.instagramHandle ? `@${store.instagramHandle.replace(/^@/, "")}` : "Not linked", icon: Globe },
+                    {
+                      label: "Member since",
+                      value: store.createdAt ? new Date(store.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "—",
+                      icon: Clock,
+                    },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="flex items-center gap-3 px-5 py-3.5">
+                      <span className="w-9 h-9 rounded-[10px] bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] text-neutral-500">{label}</span>
+                        <span className="block text-sm font-medium truncate">{value}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <div className="lg:col-span-2 space-y-6">
+                {/* Plan and usage */}
+                <section style={{ animationDelay: "160ms" }} className="hero-rise relative overflow-hidden rounded-2xl bg-neutral-950 text-white p-5">
+                  <span aria-hidden className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-violet-500/30 blur-3xl" />
+                  <span className="relative block text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">Your plan</span>
+                  <span className="relative mt-1 block text-lg font-semibold">{currentPlan.name}</span>
+                  <span className="relative block text-xs text-white/55">{currentPlan.priceFormatted}</span>
+                  <div className="relative mt-4">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">Products used</span>
+                      <span className="font-semibold tabular-nums">
+                        {totalProducts} / {currentPlan.maxProducts >= 9999 ? "∞" : currentPlan.maxProducts}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white/15 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400 origin-left bar-grow"
+                        style={{
+                          width: `${Math.min(100, Math.max(4, (totalProducts / (currentPlan.maxProducts >= 9999 ? 100 : currentPlan.maxProducts)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("billing")}
+                    className="relative mt-5 w-full h-10 rounded-[10px] bg-white text-black text-sm font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-neutral-100 transition-colors"
+                  >
+                    {store.planId === "pro" ? "Manage plan" : "Upgrade plan"}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </section>
+
+                {/* Shortcuts */}
+                <section style={{ animationDelay: "220ms" }} className="hero-rise grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Store settings", icon: Settings, tab: "settings" as const, tone: "bg-neutral-100 text-neutral-700" },
+                    { label: "Themes", icon: Palette, tab: "themes" as const, tone: "bg-fuchsia-50 text-fuchsia-600" },
+                    { label: "Notifications", icon: Bell, tab: "notifications" as const, tone: "bg-indigo-50 text-indigo-600" },
+                    { label: "Subscription", icon: CreditCard, tab: "billing" as const, tone: "bg-amber-50 text-amber-600" },
+                  ].map(({ label, icon: Icon, tab, tone }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className="group rounded-2xl border border-neutral-200 bg-white p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-22px_rgba(0,0,0,0.3)]"
+                    >
+                      <span className={`w-9 h-9 rounded-[10px] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${tone}`}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="mt-3 block text-sm font-semibold">{label}</span>
+                    </button>
+                  ))}
+                </section>
+
+                {userStores.length > 1 && (
+                  <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+                    <label className="block text-sm font-semibold">Switch store</label>
+                    <select
+                      value={store.subdomain}
+                      onChange={(e) => {
+                        setActiveSubdomain(e.target.value);
+                        router.push(`/dashboard?store=${e.target.value}`);
+                      }}
+                      className="mt-2 w-full h-10 text-sm bg-white border border-neutral-200 rounded-[10px] px-3 font-medium cursor-pointer focus:outline-none focus:border-black"
+                    >
+                      {userStores.map((st) => (
+                        <option key={st.subdomain} value={st.subdomain}>
+                          {st.name}
+                        </option>
+                      ))}
+                    </select>
+                  </section>
+                )}
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut();
+                    router.push("/login");
+                  }}
+                  className="w-full h-11 rounded-2xl border border-red-200 bg-white text-red-600 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign out
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2568,7 +2841,7 @@ function DashboardPageContent() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Link href={`/s/${store.subdomain}/products/${prod.slug}`} target="_blank">
+                      <Link href={getStoreUrl(store.subdomain, `/products/${prod.slug}`)} target="_blank">
                         <Button size="sm" variant="outline" className="text-xs h-7 rounded-md">
                           View Page
                         </Button>
@@ -3267,7 +3540,7 @@ function DashboardPageContent() {
                               {/* Actions */}
                               <div className="flex items-center gap-2">
                                 <Link
-                                  href={`/s/${store.subdomain}/category/${cat.slug}`}
+                                  href={getStoreUrl(store.subdomain, `/category/${cat.slug}`)}
                                   target="_blank"
                                 >
                                   <Button size="sm" variant="outline" className="text-xs h-7 rounded-md gap-1 cursor-pointer">
@@ -4717,7 +4990,7 @@ function DashboardPageContent() {
                         {/* Visual Storefront Preview Window with Interactive Click Trigger */}
                         <div
                           onClick={() => {
-                            window.location.href = `/s/${store.subdomain}?preview_theme=${theme.slug}`;
+                            window.location.href = getStoreUrl(store.subdomain, `?preview_theme=${theme.slug}`);
                           }}
                           className="relative h-48 sm:h-52 w-full overflow-hidden bg-neutral-900 cursor-pointer select-none"
                         >
@@ -4821,7 +5094,7 @@ function DashboardPageContent() {
                           variant="outline"
                           className="text-xs font-semibold rounded-xl border-neutral-300 hover:border-black hover:bg-neutral-50 h-9 px-3 gap-1 shadow-2xs transition-all cursor-pointer"
                           onClick={() => {
-                            window.location.href = `/s/${store.subdomain}?preview_theme=${theme.slug}`;
+                            window.location.href = getStoreUrl(store.subdomain, `?preview_theme=${theme.slug}`);
                           }}
                         >
                           <Eye className="w-3.5 h-3.5 text-neutral-700" />
@@ -4948,10 +5221,11 @@ function DashboardPageContent() {
                     <span className="text-[11px] font-bold text-neutral-700 block">Primary Accent</span>
                     <span className="text-[10px] text-neutral-400 block truncate">Buttons & brand headings</span>
                   </div>
-                  <Input
+                  <input
                     value={customPrimary}
                     onChange={(e) => setCustomPrimary(e.target.value)}
-                    className="w-20 font-mono text-xs uppercase h-8 px-2"
+                    aria-label="Hex colour"
+                    className="w-[5.5rem] shrink-0 h-9 rounded-[8px] border border-neutral-300 bg-white px-2.5 font-mono text-xs uppercase text-neutral-900 focus:outline-none focus:border-black focus:ring-2 focus:ring-black/10"
                     maxLength={7}
                   />
                 </div>
@@ -4968,10 +5242,11 @@ function DashboardPageContent() {
                     <span className="text-[11px] font-bold text-neutral-700 block">Canvas Background</span>
                     <span className="text-[10px] text-neutral-400 block truncate">Store page backdrop</span>
                   </div>
-                  <Input
+                  <input
                     value={customBackground}
                     onChange={(e) => setCustomBackground(e.target.value)}
-                    className="w-20 font-mono text-xs uppercase h-8 px-2"
+                    aria-label="Hex colour"
+                    className="w-[5.5rem] shrink-0 h-9 rounded-[8px] border border-neutral-300 bg-white px-2.5 font-mono text-xs uppercase text-neutral-900 focus:outline-none focus:border-black focus:ring-2 focus:ring-black/10"
                     maxLength={7}
                   />
                 </div>
@@ -4988,10 +5263,11 @@ function DashboardPageContent() {
                     <span className="text-[11px] font-bold text-neutral-700 block">Surface & Cards</span>
                     <span className="text-[10px] text-neutral-400 block truncate">Product cards & cart drawer</span>
                   </div>
-                  <Input
+                  <input
                     value={customSurface}
                     onChange={(e) => setCustomSurface(e.target.value)}
-                    className="w-20 font-mono text-xs uppercase h-8 px-2"
+                    aria-label="Hex colour"
+                    className="w-[5.5rem] shrink-0 h-9 rounded-[8px] border border-neutral-300 bg-white px-2.5 font-mono text-xs uppercase text-neutral-900 focus:outline-none focus:border-black focus:ring-2 focus:ring-black/10"
                     maxLength={7}
                   />
                 </div>
@@ -5801,12 +6077,63 @@ function DashboardPageContent() {
             )}
           </div>
         )}
+
+        {/* App footer — overview only; links point at real homepage sections, dashboard tabs or support */}
+        {activeTab === "overview" && (
+        <footer className="mt-14 rounded-[20px] bg-neutral-950 text-white px-6 py-6 sm:px-8">
+          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
+            <div className="flex flex-col items-center gap-1 md:items-start">
+              <ShopperWordmark className="h-8 w-auto text-white" />
+              <span className="text-[12px] text-white/50">{siteConfig.description}</span>
+            </div>
+            <nav aria-label="Shopper" className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-white/70 md:justify-end md:max-w-xl">
+              {[
+                { label: "Online store builder", href: "/#storefront" },
+                { label: "Store themes", href: "/#themes" },
+                { label: "UPI payments", href: "/#platform" },
+                { label: "Pricing", href: "/#pricing" },
+                { label: "FAQs", href: "/#faq" },
+                { label: "Contact support", href: `mailto:${siteConfig.supportEmail}` },
+              ].map((l) => (
+                <a key={l.label} href={l.href} style={{ minHeight: 0 }} className="hover:text-white transition-colors">
+                  {l.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-white/10 flex flex-col-reverse items-center gap-2 text-[11px] text-white/45 md:flex-row md:justify-between">
+            <span>© {new Date().getFullYear()} Roxten Studios Pvt Ltd · v{siteConfig.version}</span>
+            <span className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+              {[
+                { label: "Plans", onClick: () => setActiveTab("billing") },
+                { label: "Settings", onClick: () => setActiveTab("settings") },
+                { label: "View store", onClick: () => window.open(liveStoreUrl, "_blank") },
+              ].map((l) => (
+                <button key={l.label} type="button" onClick={l.onClick} style={{ minHeight: 0 }} className="hover:text-white transition-colors">
+                  {l.label}
+                </button>
+              ))}
+              {[
+                { label: "Terms", href: siteConfig.legal.terms },
+                { label: "Privacy", href: siteConfig.legal.privacy },
+              ]
+                .filter((l) => l.href)
+                .map((l) => (
+                  <a key={l.label} href={l.href} target="_blank" rel="noreferrer" style={{ minHeight: 0 }} className="hover:text-white transition-colors">
+                    {l.label}
+                  </a>
+                ))}
+            </span>
+          </div>
+        </footer>
+        )}
       </main>
       </div>
 
       {/* Feature 12: Mobile Bottom Floating Pill Navigation (Mobile Only - Desktop uses Sidebar) */}
-      <div className="md:hidden fixed bottom-4 inset-x-0 mx-auto w-[92%] max-w-sm z-40">
-        <div className="bg-neutral-900/95 backdrop-blur-xl text-white rounded-full px-4 py-2.5 shadow-2xl border border-neutral-800/90 flex items-center justify-around">
+      <div className="md:hidden fixed bottom-4 inset-x-0 mx-auto w-[92%] max-w-sm z-[60]">
+        <div className="bg-black text-white rounded-[18px] px-3 py-2 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.5)] flex items-center justify-around">
           <button
             onClick={() => setActiveTab("overview")}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-full transition-all ${
@@ -5825,7 +6152,7 @@ function DashboardPageContent() {
           >
             <ShoppingBag className="w-4 h-4" />
             {unfulfilledOrders.length > 0 && (
-              <span className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-amber-400" />
+              <span className="absolute top-0.5 right-2.5 w-1.5 h-1.5 rounded-full bg-white" />
             )}
             <span className="text-[10px]">Orders</span>
           </button>
@@ -5841,186 +6168,127 @@ function DashboardPageContent() {
           </button>
 
           <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center gap-1 py-1 px-3 rounded-full text-neutral-400 hover:text-white transition-all"
+            onClick={() => setIsMobileMenuOpen((o) => !o)}
+            aria-expanded={isMobileMenuOpen}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-full transition-all ${
+              isMobileMenuOpen ? "text-white font-bold" : "text-neutral-400 hover:text-white"
+            }`}
           >
-            <Menu className="w-4 h-4" />
-            <span className="text-[10px]">Menu</span>
+            <span className="relative w-4 h-4">
+              <Menu className={`absolute inset-0 w-4 h-4 transition-all duration-300 ${isMobileMenuOpen ? "rotate-90 scale-0 opacity-0" : ""}`} />
+              <X className={`absolute inset-0 w-4 h-4 transition-all duration-300 ${isMobileMenuOpen ? "" : "-rotate-90 scale-0 opacity-0"}`} />
+            </span>
+            <span className="text-[10px]">{isMobileMenuOpen ? "Close" : "Menu"}</span>
           </button>
         </div>
       </div>
 
-      {/* Feature 2: Notification Center Slide-Over Drawer (Replaces modal popup) */}
-      {isNotificationOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-backdrop-in"
-            onClick={() => setIsNotificationOpen(false)}
-          />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col border-l border-neutral-200 animate-drawer-right">
-              <div className="p-4 sm:p-5 border-b border-neutral-100 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-800">
-                    <Bell className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-neutral-900">Notification Center</h3>
-                    <p className="text-[11px] text-neutral-500">Live store activity & merchant updates</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsNotificationOpen(false)}
-                  className="p-2 rounded-xl text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* Mobile menu: floating card that pops up above the bottom bar */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-backdrop-in" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="absolute bottom-[88px] inset-x-0 mx-auto w-[92%] max-w-sm rounded-[22px] bg-white p-3 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.45)] animate-sheet-up origin-bottom">
+            {/* account */}
+            <div className="flex items-center gap-3 px-2 pt-1 pb-3">
+              <span className="w-9 h-9 rounded-full bg-black text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+                {ownerInitials}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold truncate">{ownerName}</span>
+                <span className="block text-[11px] text-neutral-500 truncate">{storeWebDomain}</span>
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-[6px] border border-neutral-200 text-neutral-600">
+                {store.planId}
+              </span>
+            </div>
 
-              <div className="p-4 flex-1 overflow-y-auto space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-neutral-700">Recent Alerts</span>
-                    {hasUnreadNotifications && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
-                        {notifications.filter((n) => n.unread).length} unread
-                      </span>
-                    )}
-                  </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  { id: "overview", label: "Overview", icon: LayoutDashboard },
+                  { id: "products", label: "Products", icon: Package },
+                  { id: "categories", label: "Categories", icon: FolderTree },
+                  { id: "orders", label: "Orders", icon: ShoppingBag, dot: unfulfilledOrders.length > 0 },
+                  { id: "discounts", label: "Discounts", icon: Tag },
+                  { id: "customers", label: "Customers", icon: Users },
+                  { id: "reviews", label: "Reviews", icon: Star, locked: !canUseReviews(store.planId) },
+                  { id: "banners", label: "Banners", icon: ImageIcon },
+                  { id: "themes", label: "Themes", icon: Palette },
+                  { id: "billing", label: "Plan", icon: CreditCard },
+                  { id: "settings", label: "Settings", icon: Settings },
+                  { id: "plugins", label: "Plugins", icon: Plug, locked: !isPaidPlan(store.planId) },
+                ] as { id: DashTab; label: string; icon: React.ElementType; dot?: boolean; locked?: boolean }[]
+              ).map((item, i) => {
+                const Icon = item.icon;
+                const isCurrent = activeTab === item.id;
+                return (
                   <button
+                    key={item.id}
                     type="button"
                     onClick={() => {
-                      setNotifications(notifications.map((n) => ({ ...n, unread: false })));
-                      setHasUnreadNotifications(false);
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
                     }}
-                    className="text-[11px] font-bold text-neutral-500 hover:text-black transition-colors"
+                    className="group flex flex-col items-center gap-1.5 rounded-[14px] py-2.5 hero-rise active:scale-95 transition-transform"
+                    style={{ animationDelay: `${60 + i * 22}ms` }}
                   >
-                    Mark all as read
-                  </button>
-                </div>
-
-                <div className="space-y-2 divide-y divide-neutral-100">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => {
-                        if (n.type === "order") setActiveTab("orders");
-                        if (n.type === "stock") setActiveTab("products");
-                        if (n.type === "feature") setActiveTab("discounts");
-                        setIsNotificationOpen(false);
-                      }}
-                      className={`p-3 rounded-xl transition-all cursor-pointer flex items-start gap-3 ${
-                        n.unread ? "bg-neutral-50 hover:bg-neutral-100/80" : "hover:bg-neutral-50 opacity-80"
-                      }`}
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-neutral-200/60 flex items-center justify-center shrink-0 text-neutral-800 mt-0.5">
-                        {n.type === "order" ? <ShoppingBag className="w-4 h-4 text-emerald-600" /> : n.type === "stock" ? <Package className="w-4 h-4 text-amber-600" /> : <Sparkles className="w-4 h-4 text-purple-600" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-xs font-bold text-neutral-900 truncate">{n.title}</h5>
-                          <span className="text-[10px] text-neutral-400 shrink-0">{n.time}</span>
-                        </div>
-                        <p className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">{n.desc}</p>
-                      </div>
-                      {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1.5" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Feature 12b: Mobile Slide-Over Navigation Drawer (Replaces modal popup) */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-backdrop-in"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
-            <div className="w-screen max-w-xs bg-white shadow-2xl flex flex-col border-r border-neutral-200 p-5 overflow-y-auto animate-drawer-left">
-              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-rose-500 via-purple-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-white shrink-0 tracking-wider shadow-2xs">
-                    {ownerInitials}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-neutral-500 font-medium">{greetingTime},</p>
-                    <h4 className="text-xs font-bold text-neutral-900 truncate">Hello, {ownerName} 👋</h4>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-black hover:bg-neutral-100"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <nav className="space-y-1 mt-4">
-                {[
-                  { id: "overview", label: "Overview", icon: LayoutDashboard },
-                  { id: "products", label: "Products & Catalog", icon: Package, count: totalProducts },
-                  { id: "categories", label: "Categories", icon: FolderTree, count: store.categories?.length || 0 },
-                  { id: "orders", label: "Orders", icon: ShoppingBag, count: unfulfilledOrders.length > 0 ? `${unfulfilledOrders.length} pending` : undefined },
-                  { id: "discounts", label: "Discounts & Coupons", icon: Tag, count: store.discounts?.length || 0 },
-                  { id: "customers", label: "Customers", icon: Users, count: totalCustomers },
-                  { id: "reviews", label: "Reviews", icon: Star },
-                  { id: "banners", label: "Banners", icon: ImageIcon },
-                  { id: "themes", label: "Themes & Styling", icon: Palette },
-                  { id: "billing", label: "Subscription", icon: CreditCard },
-                  { id: "settings", label: "Store Settings", icon: Settings },
-                  { id: "plugins", label: "Plugins & Gmail", icon: Plug },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const isCurrent = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveTab(item.id as any);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                        isCurrent ? "bg-[#111111] text-white" : "text-neutral-700 hover:bg-neutral-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4" />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.count !== undefined && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                          isCurrent ? "bg-neutral-800 text-neutral-200" : "bg-neutral-200 text-neutral-800"
-                        }`}>
-                          {item.count}
+                    {item.locked ? (
+                      // sealed tile: gold foil, dashed seal edge, dimmed icon and a lock badge
+                      <span
+                        className={`seal-shine relative w-11 h-11 rounded-[13px] flex items-center justify-center border border-dashed ${
+                          isCurrent ? "border-amber-500 bg-amber-100" : "border-amber-300 bg-gradient-to-br from-amber-50 via-white to-amber-100"
+                        }`}
+                        style={{ backgroundImage: "repeating-linear-gradient(135deg, rgba(245,158,11,0.10) 0 3px, transparent 3px 7px)" }}
+                      >
+                        <Icon className="w-[18px] h-[18px] text-amber-800/35" />
+                        <span className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white ring-2 ring-white flex items-center justify-center shadow-sm">
+                          <Lock className="w-2.5 h-2.5" strokeWidth={2.75} />
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
+                      </span>
+                    ) : (
+                      <span
+                        className={`relative w-11 h-11 rounded-[13px] flex items-center justify-center transition-colors ${
+                          isCurrent ? "bg-black text-white" : "bg-neutral-100 text-neutral-700 group-hover:bg-neutral-200"
+                        }`}
+                      >
+                        <Icon className="w-[18px] h-[18px]" />
+                        {item.dot && <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-indigo-500 ring-2 ring-white" />}
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10.5px] ${
+                        item.locked ? "font-medium text-amber-700" : isCurrent ? "font-semibold text-neutral-950" : "text-neutral-600"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-              <div className="pt-4 mt-auto border-t border-neutral-200 flex items-center justify-between">
-                <Link href={liveStoreUrl} target="_blank" className="text-xs font-bold text-neutral-800 flex items-center gap-1">
-                  <span>Visit Live Store</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-                <button
-                  onClick={async () => {
-                    await signOut();
-                    router.push("/login");
-                  }}
-                  className="text-xs font-bold text-red-600 hover:text-red-700"
-                >
-                  Sign Out
-                </button>
-              </div>
+            <div className="mt-2 pt-2 border-t border-neutral-100 grid grid-cols-2 gap-2">
+              <Link
+                href={liveStoreUrl}
+                target="_blank"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="h-10 rounded-[12px] bg-neutral-100 text-xs font-semibold flex items-center justify-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View store
+              </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsMobileMenuOpen(false);
+                  await signOut();
+                  router.push("/login");
+                }}
+                className="h-10 rounded-[12px] bg-red-50 text-red-600 text-xs font-semibold flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign out
+              </button>
             </div>
           </div>
         </div>

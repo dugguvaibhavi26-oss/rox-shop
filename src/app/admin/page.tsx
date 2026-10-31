@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { getStoreDomain, getStoreUrl } from "@/lib/config/site";
+import { PlatformBannersManager } from "@/components/admin/platform-banners-manager";
 import {
   ShieldAlert,
   Users,
@@ -34,6 +36,7 @@ import {
   AlertTriangle,
   Lock,
   Unlock,
+  Image as ImageIcon,
   RefreshCw,
   Eye,
   Trash2,
@@ -97,9 +100,9 @@ function AdminDashboardContent() {
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Active Tab: overview | users | subscriptions | broadcasts | health
+  // Active Tab: overview | users | subscriptions | broadcasts | banners | health
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "subscriptions" | "broadcasts" | "health"
+    "overview" | "users" | "subscriptions" | "broadcasts" | "banners" | "health"
   >("overview");
 
   // Detailed Seller Profile View State (when inspecting a single store's full history)
@@ -624,7 +627,7 @@ function AdminDashboardContent() {
               <div className="flex items-center gap-2 shrink-0">
                 <span className="font-bold text-sm text-neutral-900 whitespace-nowrap">{viewingStore.name}</span>
                 <span className="text-[11px] font-mono text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded whitespace-nowrap">
-                  {viewingStore.subdomain}.shopper.site
+                  {getStoreDomain(viewingStore.subdomain)}
                 </span>
                 <Badge
                   variant="neutral"
@@ -642,7 +645,7 @@ function AdminDashboardContent() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <Link href={`/s/${viewingStore.subdomain}`} target="_blank" className="shrink-0">
+              <Link href={getStoreUrl(viewingStore.subdomain)} target="_blank" className="shrink-0">
                 <Button size="sm" variant="outline" className="text-xs h-8 whitespace-nowrap bg-white border-neutral-300">
                   <span>Storefront</span>
                   <ExternalLink className="w-3 h-3 ml-1" />
@@ -932,7 +935,7 @@ function AdminDashboardContent() {
                   <ShoppingBag className="w-10 h-10 mx-auto text-neutral-300 mb-2" />
                   <p className="text-sm font-bold text-neutral-800">No orders found for this store</p>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Customer orders placed on {viewingStore.subdomain}.shopper.site will appear chronologically here.
+                    Customer orders placed on {getStoreDomain(viewingStore.subdomain)} will appear chronologically here.
                   </p>
                 </div>
               ) : (
@@ -1405,6 +1408,17 @@ function AdminDashboardContent() {
               <span>Broadcast Alerts</span>
             </button>
             <button
+              onClick={() => setActiveTab("banners")}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
+                activeTab === "banners"
+                  ? "bg-white text-neutral-900 shadow-xs font-bold"
+                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-pink-600 shrink-0" />
+              <span>Banners</span>
+            </button>
+            <button
               onClick={() => setActiveTab("health")}
               className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
                 activeTab === "health"
@@ -1477,6 +1491,14 @@ function AdminDashboardContent() {
             }`}
           >
             Alerts & Gmail
+          </button>
+          <button
+            onClick={() => setActiveTab("banners")}
+            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
+              activeTab === "banners" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
+            }`}
+          >
+            Banners
           </button>
           <button
             onClick={() => setActiveTab("health")}
@@ -1948,7 +1970,7 @@ function AdminDashboardContent() {
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-neutral-900 truncate">{s.name}</span>
                           <span className="text-[10px] text-neutral-500 font-mono truncate">
-                            {s.subdomain}.shopper.site
+                            {getStoreDomain(s.subdomain)}
                           </span>
                         </div>
                         <p className="text-[11px] text-neutral-500 truncate mt-0.5">
@@ -2110,12 +2132,12 @@ function AdminDashboardContent() {
                             {s.name}
                           </button>
                           <a
-                            href={`/s/${s.subdomain}`}
+                            href={getStoreUrl(s.subdomain)}
                             target="_blank"
                             rel="noreferrer"
                             className="text-[11px] font-mono text-neutral-500 hover:text-neutral-900 hover:underline inline-flex items-center gap-1"
                           >
-                            <span>{s.subdomain}.shopper.site</span>
+                            <span>{getStoreDomain(s.subdomain)}</span>
                             <ExternalLink className="w-2.5 h-2.5 text-neutral-400" />
                           </a>
                         </td>
@@ -2600,6 +2622,8 @@ function AdminDashboardContent() {
         )}
 
         {/* 5. CLOUD SYNC & INFRASTRUCTURE (LIGHT THEME) */}
+        {activeTab === "banners" && <PlatformBannersManager />}
+
         {activeTab === "health" && (
           <div className="space-y-6">
             <div>
@@ -2815,7 +2839,7 @@ function AdminDashboardContent() {
       >
         <div className="space-y-4 text-left">
           <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
-            <strong>Warning:</strong> The custom subdomain <code>{selectedStore?.subdomain}.shopper.site</code> will be permanently released.
+            <strong>Warning:</strong> The custom subdomain <code>{getStoreDomain(selectedStore?.subdomain || "")}</code> will be permanently released.
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

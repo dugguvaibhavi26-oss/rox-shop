@@ -22,8 +22,8 @@ export function Tabs({ tabs, activeTab, onChange, variant = "pill", className }:
       role="tablist"
       className={cn(
         "flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-sm font-medium",
-        variant === "pill" && "p-1 bg-[#F1F5F9] rounded-xl",
-        variant === "underline" && "border-b border-[#E2E8F0] gap-4",
+        variant === "pill" && "p-1 bg-[#F5F5F5] rounded-[3px]",
+        variant === "underline" && "border-b border-[#E5E5E5] gap-4",
         className
       )}
     >
@@ -40,14 +40,14 @@ export function Tabs({ tabs, activeTab, onChange, variant = "pill", className }:
               variant === "pill" && [
                 "rounded-lg",
                 isActive
-                  ? "bg-white text-[#1E3A8A] font-semibold shadow-xs"
-                  : "text-[#64748B] hover:text-[#0F172A] hover:bg-white/50",
+                  ? "bg-white text-[#111111] font-semibold shadow-xs"
+                  : "text-[#555555] hover:text-[#111111] hover:bg-white/50",
               ],
               variant === "underline" && [
                 "-mb-px border-b-2",
                 isActive
-                  ? "border-[#1E3A8A] text-[#1E3A8A] font-semibold"
-                  : "border-transparent text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1]",
+                  ? "border-[#111111] text-[#111111] font-semibold"
+                  : "border-transparent text-[#555555] hover:text-[#111111] hover:border-[#CCCCCC]",
               ]
             )}
           >
@@ -57,7 +57,7 @@ export function Tabs({ tabs, activeTab, onChange, variant = "pill", className }:
               <span
                 className={cn(
                   "px-1.5 py-0.5 rounded-full text-xs font-semibold",
-                  isActive ? "bg-[#DBEAFE] text-[#1E3A8A]" : "bg-[#E2E8F0] text-[#64748B]"
+                  isActive ? "bg-[#DBEAFE] text-[#111111]" : "bg-[#E5E5E5] text-[#555555]"
                 )}
               >
                 {tab.count}

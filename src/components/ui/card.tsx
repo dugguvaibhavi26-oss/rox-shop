@@ -11,8 +11,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] shadow-xs overflow-hidden",
-          hoverable && "transition-all duration-200 hover:shadow-md hover:border-[#CBD5E1] cursor-pointer",
+          "rounded-[3px] border border-[#E5E5E5] bg-[#FFFFFF] text-[#111111] overflow-hidden",
+          hoverable && "transition-all duration-200 hover:border-[#111111] cursor-pointer",
           className
         )}
         {...props}
@@ -38,12 +38,12 @@ export function CardHeader({
 }) {
   return (
     <div
-      className={cn("flex items-start justify-between p-5 border-b border-[#F1F5F9]", className)}
+      className={cn("flex items-start justify-between p-5 border-b border-[#EEEEEE]", className)}
       {...props}
     >
       <div className="flex flex-col text-left">
-        {title && <h3 className="text-base font-semibold text-[#0F172A]">{title}</h3>}
-        {subtitle && <p className="text-xs text-[#64748B] mt-0.5">{subtitle}</p>}
+        {title && <h3 className="text-lg font-semibold text-[#111111]">{title}</h3>}
+        {subtitle && <p className="text-xs text-[#555555] mt-0.5">{subtitle}</p>}
         {children}
       </div>
       {action && <div className="shrink-0 ml-4">{action}</div>}
@@ -62,7 +62,7 @@ export function CardContent({ className, children, ...props }: React.HTMLAttribu
 export function CardFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex items-center justify-between p-4 bg-[#F8FAFC] border-t border-[#F1F5F9]", className)}
+      className={cn("flex items-center justify-between p-4 bg-[#FAFAFA] border-t border-[#EEEEEE]", className)}
       {...props}
     >
       {children}

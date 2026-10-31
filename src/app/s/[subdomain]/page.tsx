@@ -97,13 +97,26 @@ export default function StorefrontPage({ params }: PageProps) {
     }
   }, []);
 
-  // Load store
+  // Load store. On a fresh address (e.g. a store's own subdomain) nothing is cached yet, so keep
+  // showing the loader until the store arrives from the cloud, the first sync says it doesn't
+  // exist, or 8 seconds pass.
   useEffect(() => {
-    const loaded = storeService.getStore(subdomain);
-    if (loaded) {
-      setStore(loaded);
-    }
-    setLoading(false);
+    const check = () => {
+      const loaded = storeService.getStore(subdomain);
+      if (loaded) {
+        setStore({ ...loaded });
+        setLoading(false);
+      } else if (storeService.isCloudSynced()) {
+        setLoading(false);
+      }
+    };
+    check();
+    const unsubscribe = storeService.subscribe(check);
+    const giveUp = setTimeout(() => setLoading(false), 8000);
+    return () => {
+      unsubscribe();
+      clearTimeout(giveUp);
+    };
   }, [subdomain]);
 
   const refreshStore = () => {

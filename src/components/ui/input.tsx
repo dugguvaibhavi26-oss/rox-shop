@@ -17,43 +17,43 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full flex flex-col gap-1.5 text-left">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#0F172A] flex items-center justify-between">
+          <label htmlFor={inputId} className="text-sm font-medium text-[#111111] flex items-center justify-between">
             <span>{label}</span>
-            {props.required && <span className="text-xs text-[#B91C1C] font-normal">*required</span>}
+            {props.required && <span className="text-xs text-[#9B2C2C] font-normal">*required</span>}
           </label>
         )}
         <div
           className={cn(
-            "relative flex items-center rounded-xl border bg-white transition-colors duration-150 min-h-[44px]",
+            "relative flex items-center rounded-[3px] border bg-[#FFFFFF] transition-colors duration-150 min-h-[44px]",
             error
-              ? "border-[#B91C1C] focus-within:ring-2 focus-within:ring-[#B91C1C]/20"
-              : "border-[#CBD5E1] focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/10",
-            disabled && "bg-[#F8FAFC] opacity-60 cursor-not-allowed"
+              ? "border-[#9B2C2C] focus-within:ring-2 focus-within:ring-[#9B2C2C]/20"
+              : "border-[#CCCCCC] focus-within:border-[#111111] focus-within:ring-2 focus-within:ring-[#111111]/10",
+            disabled && "bg-[#FAFAFA] opacity-60 cursor-not-allowed"
           )}
         >
-          {leftAddon && <div className="pl-3.5 pr-2 flex items-center text-[#64748B] select-none text-sm font-medium">{leftAddon}</div>}
+          {leftAddon && <div className="pl-3.5 pr-2 flex items-center text-[#555555] select-none text-sm font-medium">{leftAddon}</div>}
           <input
             id={inputId}
             ref={ref}
             type={type}
             disabled={disabled}
             className={cn(
-              "w-full bg-transparent px-3.5 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none disabled:cursor-not-allowed",
+              "w-full bg-transparent px-3.5 py-2.5 text-sm text-[#111111] placeholder:text-[#999999] focus:outline-none disabled:cursor-not-allowed",
               leftAddon && "pl-0",
               rightAddon && "pr-0",
               className
             )}
             {...props}
           />
-          {rightAddon && <div className="pr-3.5 pl-2 flex items-center text-[#64748B] select-none text-sm">{rightAddon}</div>}
+          {rightAddon && <div className="pr-3.5 pl-2 flex items-center text-[#555555] select-none text-sm">{rightAddon}</div>}
         </div>
         {error ? (
-          <p className="text-xs text-[#B91C1C] flex items-center gap-1 font-medium mt-0.5">
+          <p className="text-xs text-[#9B2C2C] flex items-center gap-1 font-medium mt-0.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{error}</span>
           </p>
         ) : helperText ? (
-          <p className="text-xs text-[#64748B] mt-0.5">{helperText}</p>
+          <p className="text-xs text-[#555555] mt-0.5">{helperText}</p>
         ) : null}
       </div>
     );
@@ -83,7 +83,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         onChange={handleChange}
         value={value}
         leftAddon={
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-[#0F172A] border-r border-[#E2E8F0] pr-2.5">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-[#111111] border-r border-[#E2E8F0] pr-2.5">
             <span>🇮🇳</span>
             <span>+91</span>
           </span>
@@ -149,7 +149,7 @@ export const PriceInput = React.forwardRef<HTMLInputElement, PriceInputProps>(
         inputMode="decimal"
         placeholder={placeholder}
         onChange={handleChange}
-        leftAddon={<span className="text-base font-semibold text-[#0F172A]">₹</span>}
+        leftAddon={<span className="text-base font-semibold text-[#111111]">₹</span>}
         {...props}
       />
     );
@@ -173,13 +173,13 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        leftAddon={<Search className="w-4 h-4 text-[#94A3B8]" />}
+        leftAddon={<Search className="w-4 h-4 text-[#999999]" />}
         rightAddon={
           value ? (
             <button
               type="button"
               onClick={onClear}
-              className="p-1 rounded-md text-[#94A3B8] hover:text-[#0F172A] focus:outline-none"
+              className="p-1 rounded-md text-[#999999] hover:text-[#111111] focus:outline-none"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />

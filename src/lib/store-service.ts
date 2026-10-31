@@ -1,6 +1,7 @@
 import { PLATFORM_PLANS, canAddProduct, isThemeAllowed } from "./plans";
 import { getTheme, PLATFORM_THEMES } from "./themes";
-import { db } from "./firebase";
+import { db, storage } from "./firebase";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   collection,
   doc,
@@ -218,6 +219,15 @@ export interface PlatformBroadcast {
   ctaLink?: string;
   sentAt: string;
   recipientCount: number;
+}
+
+// Image banner the platform admin shows on every seller's dashboard overview
+export interface PlatformBanner {
+  id: string;
+  imageUrl: string;
+  link?: string; // path inside the app (e.g. /dashboard?tab=themes) or a full URL
+  storagePath?: string; // set when the image lives in Firebase Storage
+  createdAt: string;
 }
 
 export interface PluginsConfigData {
@@ -971,6 +981,12 @@ class StoreService {
   private stores: Record<string, StoreData> = { ...INITIAL_STORES };
   private initialized = false;
   private firebaseConnected = false;
+  private cloudSynced = false;
+
+  /** True once the first cloud snapshot of stores has arrived (or the listener failed). */
+  public isCloudSynced(): boolean {
+    return this.cloudSynced;
+  }
   private listeners: (() => void)[] = [];
 
   public subscribe(listener: () => void): () => void {
@@ -1011,6 +1027,8 @@ class StoreService {
       onSnapshot(
         storesCol,
         (snapshot) => {
+          const firstSync = !this.cloudSynced;
+          this.cloudSynced = true;
           if (snapshot.empty) {
             // Seed initial stores if cloud is brand new
             Object.values(this.stores).forEach((store) => {
@@ -1033,9 +1051,12 @@ class StoreService {
               this.notify();
             }
           }
+          if (firstSync) this.notify();
         },
         (error) => {
           console.warn("[Firebase Firestore] Real-time listener warning:", error);
+          this.cloudSynced = true;
+          this.notify();
         }
       );
     } catch (err) {
@@ -2167,6 +2188,121 @@ class StoreService {
     return { success: true, broadcast: newBroadcast };
   }
 
+  // --- Platform banners (admin uploads, shown on every seller dashboard) ---
+  private platformBanners: PlatformBanner[] = [];
+  private platformBannersLoaded = false;
+  private platformBannersConnected = false;
+
+  public getPlatformBanners(): PlatformBanner[] {
+    this.initClient();
+    if (typeof window !== "undefined") {
+      if (!this.platformBannersLoaded) {
+        this.platformBannersLoaded = true;
+        try {
+          const saved = localStorage.getItem("shopper_platform_banners");
+          if (saved) this.platformBanners = JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to load platform banners", e);
+        }
+      }
+      this.connectPlatformBanners();
+    }
+    return this.platformBanners;
+  }
+
+  private connectPlatformBanners() {
+    if (this.platformBannersConnected) return;
+    this.platformBannersConnected = true;
+    try {
+      onSnapshot(
+        collection(db, "platform_banners"),
+        (snapshot) => {
+          // an empty cloud collection never wipes banners saved locally before sync
+          if (snapshot.empty) return;
+          this.platformBanners = snapshot.docs
+            .map((d) => d.data() as PlatformBanner)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          this.persistPlatformBanners();
+          this.notify();
+        },
+        (error) => console.warn("[Firebase Firestore] Banner listener warning:", error)
+      );
+    } catch (err) {
+      console.warn("[Firebase Firestore] Banner listener failed:", err);
+    }
+  }
+
+  private persistPlatformBanners() {
+    try {
+      localStorage.setItem("shopper_platform_banners", JSON.stringify(this.platformBanners));
+    } catch (e) {
+      console.warn("Failed to save platform banners locally", e);
+    }
+  }
+
+  public async addPlatformBanner(file: File, link?: string): Promise<PlatformBanner> {
+    this.getPlatformBanners();
+    const id = `pb-${Date.now().toString(36)}`;
+    let imageUrl: string;
+    let storagePath: string | undefined;
+
+    try {
+      // prefer Firebase Storage; give up after 20s so the admin isn't left waiting
+      const path = `platform_banners/${id}-${file.name.replace(/[^\w.-]/g, "_")}`;
+      const uploaded = await Promise.race([
+        uploadBytes(storageRef(storage, path), file, { contentType: file.type }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("upload timed out")), 20000)),
+      ]);
+      imageUrl = await getDownloadURL(uploaded.ref);
+      storagePath = path;
+    } catch (err) {
+      console.warn("[Firebase Storage] Banner upload failed, storing a compressed copy instead:", err);
+      imageUrl = await compressImageToDataUrl(file, 1600, 0.82);
+    }
+
+    const banner: PlatformBanner = {
+      id,
+      imageUrl,
+      link: link?.trim() || undefined,
+      storagePath,
+      createdAt: new Date().toISOString(),
+    };
+    this.platformBanners = [banner, ...this.platformBanners];
+    this.persistPlatformBanners();
+    setDoc(doc(db, "platform_banners", id), JSON.parse(JSON.stringify(banner))).catch((err) =>
+      console.warn("[Firebase Firestore] Banner save error", err)
+    );
+    this.notify();
+    return banner;
+  }
+
+  public updatePlatformBannerLink(id: string, link: string) {
+    this.getPlatformBanners();
+    this.platformBanners = this.platformBanners.map((b) => (b.id === id ? { ...b, link: link.trim() || undefined } : b));
+    this.persistPlatformBanners();
+    const updated = this.platformBanners.find((b) => b.id === id);
+    if (updated) {
+      setDoc(doc(db, "platform_banners", id), JSON.parse(JSON.stringify(updated))).catch((err) =>
+        console.warn("[Firebase Firestore] Banner update error", err)
+      );
+    }
+    this.notify();
+  }
+
+  public deletePlatformBanner(id: string) {
+    this.getPlatformBanners();
+    const banner = this.platformBanners.find((b) => b.id === id);
+    this.platformBanners = this.platformBanners.filter((b) => b.id !== id);
+    this.persistPlatformBanners();
+    deleteDoc(doc(db, "platform_banners", id)).catch((err) => console.warn("[Firebase Firestore] Banner delete error", err));
+    if (banner?.storagePath) {
+      deleteObject(storageRef(storage, banner.storagePath)).catch((err) =>
+        console.warn("[Firebase Storage] Banner image delete error", err)
+      );
+    }
+    this.notify();
+  }
+
   public getPlatformStats() {
     this.initClient();
     const stores = this.getAllStores();
@@ -2272,3 +2408,25 @@ class StoreService {
 
 
 export const storeService = new StoreService();
+
+// Shrinks an image to `maxWidth` and re-encodes it as JPEG, for when cloud upload isn't available
+function compressImageToDataUrl(file: File, maxWidth: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not read image"));
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}

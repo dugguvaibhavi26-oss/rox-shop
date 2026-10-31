@@ -24,6 +24,7 @@ export default function middleware(req: NextRequest) {
   // Prevent rewriting for root domain and www
   const isRoot =
     currentHost === "localhost" ||
+    currentHost === "127.0.0.1" ||
     currentHost === siteConfig.domain ||
     currentHost === `www.${siteConfig.domain}` ||
     currentHost === "shopper.in" ||
@@ -31,8 +32,20 @@ export default function middleware(req: NextRequest) {
     currentHost === "shopper.site" ||
     currentHost === `www.shopper.site`;
 
-  // If path already starts with /s/, /dashboard, /register, /gallery, or /orders, don't rewrite
   const path = url.pathname;
+
+  // On a store's own address (roxtenn.shopper.in), links written as /s/roxtenn/... are tidied
+  // to /... so the browser shows roxtenn.shopper.in/products/x rather than repeating the name.
+  if (!isRoot) {
+    const sub = currentHost.split(".")[0];
+    const prefix = `/s/${sub}`;
+    if (sub && sub !== "www" && (path === prefix || path.startsWith(`${prefix}/`))) {
+      url.pathname = path.slice(prefix.length) || "/";
+      return NextResponse.redirect(url, 307);
+    }
+  }
+
+  // If path already starts with /s/, /dashboard, /register, /gallery, or /orders, don't rewrite
   if (
     path.startsWith("/s/") ||
     path.startsWith("/dashboard") ||

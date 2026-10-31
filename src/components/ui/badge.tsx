@@ -14,12 +14,12 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variantStyles = {
-    neutral: "bg-[#F1F5F9] text-[#475569] border-[#E2E8F0]",
-    primary: "bg-[#EFF6FF] text-[#1E3A8A] border-[#BFDBFE]",
-    success: "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC]",
-    warning: "bg-[#FEF3C7] text-[#B45309] border-[#FCD34D]",
-    error: "bg-[#FEE2E2] text-[#B91C1C] border-[#FCA5A5]",
-    info: "bg-[#E0F2FE] text-[#0369A1] border-[#7DD3FC]",
+    neutral: "bg-[#F5F5F5] text-[#111111] border-[#DDDDDD]",
+    primary: "bg-[#111111] text-[#FFFFFF] border-[#111111]",
+    success: "bg-[#E6EFDF] text-[#2F6B3A] border-[#B9CFAE]",
+    warning: "bg-[#F6ECD3] text-[#8A5A12] border-[#E2C88E]",
+    error: "bg-[#F6E0DC] text-[#9B2C2C] border-[#DDAFA7]",
+    info: "bg-[#E2EAF2] text-[#2C4F73] border-[#B9C8D8]",
   };
 
   const sizeStyles = {
@@ -30,14 +30,14 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-medium rounded-full border transition-colors",
+        "inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.12em] rounded-[2px] border transition-colors",
         variantStyles[variant],
         sizeStyles[size],
         className
       )}
       {...props}
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-75" />
+      <span className="w-1 h-1 rotate-45 bg-current opacity-70" />
       <span>{children}</span>
     </span>
   );

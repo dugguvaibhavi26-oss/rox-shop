@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // store pages are served on subdomains (roxtenn.localhost:3000 in development)
+  allowedDevOrigins: ["*.localhost"],
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   AlertCircle
 } from "lucide-react";
+import { getStoreUrl } from "@/lib/config/site";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -91,7 +92,7 @@ export default function OrderTrackingPage({ params }: PageProps) {
       <header className="bg-white border-b border-neutral-200 sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link
-            href={`/s/${store.subdomain}`}
+            href={getStoreUrl(store.subdomain)}
             className="flex items-center gap-2 text-xs font-semibold text-neutral-600 hover:text-black"
           >
             <ArrowLeft className="w-4 h-4" />
