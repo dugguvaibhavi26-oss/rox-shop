@@ -277,7 +277,7 @@ export function StoreFooter({ store, brandTheme: brandThemeProp }: StoreFooterPr
                   Exclusive Perks
                 </h4>
                 <p className="text-xs text-neutral-600 leading-relaxed">
-                  Subscribe for new drop announcements and 10% off your first order.
+                  Subscribe to hear about new drops first.
                 </p>
 
                 <form onSubmit={handleSubscribe} className="space-y-2">
@@ -304,7 +304,7 @@ export function StoreFooter({ store, brandTheme: brandThemeProp }: StoreFooterPr
                 {subscribed && (
                   <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Thank you! Use code WELCOME10 for 10% off.</span>
+                    <span>Thank you! You'll hear about new drops first.</span>
                   </p>
                 )}
               </>

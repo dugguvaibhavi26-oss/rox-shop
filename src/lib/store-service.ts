@@ -1151,29 +1151,9 @@ class StoreService {
         if (!s.subscribers) {
           s.subscribers = [];
         }
-        if (!s.discounts || s.discounts.length === 0) {
-          s.discounts = [
-            {
-              id: `disc-${sub}-1`,
-              code: "WELCOME10",
-              type: "percentage",
-              value: 10,
-              minOrderValue: 49900,
-              timesUsed: 12,
-              isActive: true,
-              createdAt: s.createdAt,
-            },
-            {
-              id: `disc-${sub}-2`,
-              code: "SAVE100",
-              type: "flat",
-              value: 10000,
-              minOrderValue: 99900,
-              timesUsed: 5,
-              isActive: true,
-              createdAt: s.createdAt,
-            },
-          ];
+        // Stores start with no coupons; sellers create their own in the dashboard
+        if (!s.discounts) {
+          s.discounts = [];
         }
         if (!s.pluginsConfig) {
           s.pluginsConfig = {

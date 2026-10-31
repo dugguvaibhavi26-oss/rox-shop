@@ -385,13 +385,8 @@ export default function StorefrontPage({ params }: PageProps) {
       return;
     }
 
-    if (code === "WELCOME10" || code === "FIRST10") {
-      const discount = Math.round(cartSubtotal * 0.1);
-      setCouponDiscount(discount);
-      alert("🎉 Coupon WELCOME10 applied! 10% discount added.");
-    } else {
-      alert("Invalid promotional code. Please check your coupon code and try again.");
-    }
+    // Only codes the seller created in their dashboard are valid
+    alert("Invalid promotional code. Please check your coupon code and try again.");
   };
 
   // Place Order
@@ -1126,7 +1121,7 @@ export default function StorefrontPage({ params }: PageProps) {
                   {canUseCoupons(store.planId) && (
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Discount Code (e.g. WELCOME10)"
+                      placeholder="Discount code"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       className="text-xs uppercase font-mono font-medium rounded-xl"
