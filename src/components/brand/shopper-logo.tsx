@@ -15,13 +15,13 @@ export function ShopperMark({ className }: { className?: string }) {
   );
 }
 
-/** Bag mark + "shoppersite" wordmark. Sized by the surrounding font size. */
+/** Bag mark + "shopersite" wordmark. Sized by the surrounding font size. */
 export function ShopperLogo({ className, markClassName }: { className?: string; markClassName?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-[0.35em] leading-none", className)} role="img" aria-label="shoppersite">
+    <span className={cn("inline-flex items-center gap-[0.35em] leading-none", className)} role="img" aria-label="shopersite">
       <ShopperMark className={cn("h-[1.45em] w-auto shrink-0", markClassName)} />
       <span aria-hidden className="font-semibold tracking-[-0.035em]">
-        shoppersite
+        shopersite
       </span>
     </span>
   );

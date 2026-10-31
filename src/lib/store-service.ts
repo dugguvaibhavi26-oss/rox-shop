@@ -2,6 +2,7 @@ import { PLATFORM_PLANS, canAddProduct, isThemeAllowed } from "./plans";
 import { getTheme, PLATFORM_THEMES, registerUploadedThemes, type ThemeDefinition } from "./themes";
 import { manifestToTheme, type ParsedTemplate } from "./templates/package";
 import { db, storage } from "./firebase";
+import { getStoreDomain } from "./config/site";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   collection,
@@ -1287,7 +1288,7 @@ class StoreService {
       .replace(/[^a-z0-9-]/g, "");
 
     if (this.stores[cleanSubdomain]) {
-      throw new Error(`Domain "${cleanSubdomain}.shopper.site" is already registered.`);
+      throw new Error(`Domain "${getStoreDomain(cleanSubdomain)}" is already registered.`);
     }
 
     const newStoreId = `store-${cleanSubdomain}-${Date.now().toString(36)}`;

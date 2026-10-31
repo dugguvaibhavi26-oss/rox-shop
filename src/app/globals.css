@@ -1015,3 +1015,16 @@ html:has(.home-sans)::-webkit-scrollbar {
   .bar-grow { animation: none; }
 }
 
+/* Homepage: hide the pinned hero the moment the page sheet has covered it. Driven by scroll on the
+   compositor, so even a very fast scroll on a slow laptop can't flash the hero through the sheet. */
+@keyframes hero-covered {
+  0%, 99% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@supports (animation-timeline: scroll()) {
+  .hero-pinned {
+    animation: hero-covered linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 max(calc(100svh - 68px), 600px);
+  }
+}

@@ -18,7 +18,7 @@ export default function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get("host") || "";
 
-  // Only a store's own address (roxtenn.shopper.in, roxtenn.localhost) is a storefront. The main
+  // Only a store's own address (roxtenn.shopersite.in, roxtenn.localhost) is a storefront. The main
   // domain, www and deployment URLs like rox-shop-xyz.vercel.app all serve the main app.
   const storeSub = getStoreSubdomainFromHost(hostname);
   const path = url.pathname;

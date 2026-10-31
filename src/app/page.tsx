@@ -441,6 +441,8 @@ function useHeroSink() {
       const p = Math.min(1, Math.max(0, window.scrollY / Math.max(1, section.offsetHeight)));
       panel.style.transform = reduce.matches ? "" : `scale(${1 - p * 0.07})`;
       shade.style.opacity = String(p * 0.45);
+      // Once fully covered, take the hero out of the picture so a late-painting sheet can never reveal it
+      section.style.visibility = p >= 1 ? "hidden" : "";
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
@@ -460,7 +462,7 @@ function Hero({ onClaim }: { onClaim: (v: string) => void }) {
     // First screen (below the 68px header): an inset, rounded panel with the drifting
     // photo collage and a floating 3D text card in the middle. It stays pinned in place
     // while the rest of the page slides up over it.
-    <section ref={sectionRef} className="sticky top-[68px] z-0 px-4 sm:px-6 lg:px-8 pt-2 pb-4 sm:pb-6 h-[calc(100svh-68px)] min-h-[600px]">
+    <section ref={sectionRef} className="hero-pinned sticky top-[68px] z-0 px-4 sm:px-6 lg:px-8 pt-2 pb-4 sm:pb-6 h-[calc(100svh-68px)] min-h-[600px]">
       <div
         ref={panelRef}
         className="relative h-full rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 flex flex-col origin-top will-change-transform"

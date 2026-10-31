@@ -227,7 +227,7 @@ function AdminDashboardContent() {
   const BROADCAST_TEMPLATES = [
     {
       label: "🎉 New Themes",
-      subject: "[shoppersite] 6 New Designer Themes & Font Controls Released!",
+      subject: "[shopersite] 6 New Designer Themes & Font Controls Released!",
       message:
         "Hello Store Owners,\n\nWe have just unlocked 6 brand-new boutique store themes (Brutalist, Editorial, Minimalist, Pastel Luxe) and Google Typography controls in your Seller Dashboard. Upgrade your storefront visual aesthetic today!",
       ctaText: "Customize Storefront",
@@ -235,7 +235,7 @@ function AdminDashboardContent() {
     },
     {
       label: "⚠️ Maintenance",
-      subject: "🛠️ [Advisory] Scheduled Infrastructure Upgrade on shoppersite Cloud",
+      subject: "🛠️ [Advisory] Scheduled Infrastructure Upgrade on shopersite Cloud",
       message:
         "Dear Merchant,\n\nWe will be conducting a 15-minute scheduled cloud synchronization upgrade at 2:00 AM IST tonight. Your storefronts and checkout forms will remain completely accessible without downtime.",
       ctaText: "Check Cloud Status",
@@ -243,7 +243,7 @@ function AdminDashboardContent() {
     },
     {
       label: "⚡ 50% Pro Discount",
-      subject: "🚀 Special Offer: Get 50% Off shoppersite Pro with Unlimited Products & Gmail Drops",
+      subject: "🚀 Special Offer: Get 50% Off shopersite Pro with Unlimited Products & Gmail Drops",
       message:
         "Dear Merchant,\n\nGrow your store with unlimited catalog listings, custom designer fonts, buyer testimonials, and automated Gmail new-collection notifications. Use promo code PROGROWTH50 today!",
       ctaText: "Upgrade Subscription",
@@ -591,7 +591,7 @@ function AdminDashboardContent() {
               href="/"
               className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors"
             >
-              ← Back to shoppersite
+              ← Back to shopersite
             </Link>
           </div>
         </div>
@@ -2272,7 +2272,7 @@ function AdminDashboardContent() {
                               <a
                                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
                                   s.ownerEmail || s.contactEmail || ""
-                                )}&su=${encodeURIComponent("shoppersite Platform Notice: " + s.name)}`}
+                                )}&su=${encodeURIComponent("shopersite Platform Notice: " + s.name)}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 title={`Email merchant via Gmail (${s.ownerEmail || s.contactEmail})`}
