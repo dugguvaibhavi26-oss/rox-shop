@@ -37,6 +37,7 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { TemplateHome, TemplateHeader, TemplateFooter, TEMPLATE_HOME_LAYOUTS } from "@/components/storefront/template-layouts";
+import { canUseCoupons } from "@/lib/plans";
 
 interface PageProps {
   params: Promise<{ subdomain: string }>;
@@ -1121,7 +1122,8 @@ export default function StorefrontPage({ params }: PageProps) {
                 <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-sm space-y-4">
                   <h3 className="font-bold text-sm text-neutral-900">Order Summary</h3>
 
-                  {/* Promo Code Input */}
+                  {/* Promo Code Input (coupons are a Growth feature) */}
+                  {canUseCoupons(store.planId) && (
                   <div className="flex gap-2">
                     <Input
                       placeholder="Discount Code (e.g. WELCOME10)"
@@ -1133,6 +1135,7 @@ export default function StorefrontPage({ params }: PageProps) {
                       Apply
                     </Button>
                   </div>
+                  )}
 
                   <div className="space-y-2.5 pt-2 border-t border-neutral-100 text-xs text-neutral-600">
                     <div className="flex justify-between">

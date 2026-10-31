@@ -28,16 +28,16 @@ describe("Platform Multi-Tenant Store & Subscription Engine", () => {
     expect(store.upiId).toBe("anita@okhdfcbank");
   });
 
-  it("enforces plan product quotas on the free tier (max 10 products)", () => {
+  it("enforces plan product quotas on the free tier (max 75 products)", () => {
     const store = storeService.getStore(testSubdomain)!;
     expect(store).toBeDefined();
 
     const quota = canAddProduct(store.products.length, "free");
-    expect(quota.limit).toBe(10);
+    expect(quota.limit).toBe(75);
     expect(quota.allowed).toBe(true);
 
     // Test quota block when at limit
-    const atLimitQuota = canAddProduct(10, "free");
+    const atLimitQuota = canAddProduct(75, "free");
     expect(atLimitQuota.allowed).toBe(false);
     expect(atLimitQuota.remaining).toBe(0);
   });
@@ -63,7 +63,7 @@ describe("Platform Multi-Tenant Store & Subscription Engine", () => {
 
     const starterQuota = canAddProduct(20, "starter");
     expect(starterQuota.allowed).toBe(true);
-    expect(starterQuota.limit).toBe(50);
+    expect(starterQuota.limit).toBe(200);
 
     // Theme activation should now succeed for bento-tech
     const themeRes = storeService.setStoreTheme(testSubdomain, "bento-tech");

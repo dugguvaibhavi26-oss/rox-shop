@@ -1757,8 +1757,8 @@ function AdminDashboardContent() {
                 <div className="space-y-2 text-xs">
                   <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/70 flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-neutral-900">Free Tier (10 Products Limit)</p>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">Basic storefront theme, manual checkout</p>
+                      <p className="font-bold text-neutral-900">Free ({PLATFORM_PLANS.free.maxProducts} products)</p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">2 themes, COD, direct UPI</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-neutral-800">{stats.freeStores} stores</p>
@@ -1770,26 +1770,26 @@ function AdminDashboardContent() {
 
                   <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-neutral-900">Starter Tier (₹999 / mo)</p>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">Up to 100 products, custom subdomain</p>
+                      <p className="font-bold text-neutral-900">Growth ({PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]} / mo)</p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">Up to {PLATFORM_PLANS.starter.maxProducts} products, coupons, reviews</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-800">{stats.starterStores} stores</p>
                       <p className="text-[10px] text-amber-700 font-mono">
-                        ₹{(stats.starterStores * 999).toLocaleString("en-IN")}/mo MRR
+                        ₹{(stats.starterStores * (PLATFORM_PLANS.starter.priceMonthly / 100)).toLocaleString("en-IN")}/mo MRR
                       </p>
                     </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/70 flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-neutral-900">Pro Unlimited (₹2,499 / mo)</p>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">Unlimited SKUs, Gmail drop alerts, custom themes</p>
+                      <p className="font-bold text-neutral-900">Pro ({PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]} / mo)</p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">Unlimited products, own domain, email</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-emerald-800">{stats.proStores} stores</p>
                       <p className="text-[10px] text-emerald-700 font-mono">
-                        ₹{(stats.proStores * 2499).toLocaleString("en-IN")}/mo MRR
+                        ₹{(stats.proStores * (PLATFORM_PLANS.pro.priceMonthly / 100)).toLocaleString("en-IN")}/mo MRR
                       </p>
                     </div>
                   </div>
@@ -2328,9 +2328,9 @@ function AdminDashboardContent() {
                   <span className="text-xl font-black text-neutral-900">₹0</span>
                 </div>
                 <div className="p-3.5 bg-neutral-50 border border-neutral-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• 10 Products catalog capacity</p>
-                  <p>• Standard Lume Editorial theme</p>
-                  <p>• Direct UPI checkout</p>
+                  <p>• {PLATFORM_PLANS.free.maxProducts} products</p>
+                  <p>• 2 themes</p>
+                  <p>• COD and direct UPI</p>
                 </div>
                 <div className="pt-2 flex items-center justify-between text-xs">
                   <span className="text-neutral-500">Active Stores:</span>
@@ -2342,20 +2342,20 @@ function AdminDashboardContent() {
               <div className="p-6 rounded-xl bg-white border border-amber-300 shadow-xs space-y-4 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-neutral-900 text-base">Starter Tier</h3>
+                    <h3 className="font-bold text-neutral-900 text-base">Growth</h3>
                     <p className="text-xs text-neutral-500">Growing boutique brands</p>
                   </div>
-                  <span className="text-xl font-black text-amber-700">₹999/mo</span>
+                  <span className="text-xl font-black text-amber-700">{PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo</span>
                 </div>
                 <div className="p-3.5 bg-amber-50/50 border border-amber-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• 100 Products catalog capacity</p>
-                  <p>• All Designer Themes unlocked</p>
-                  <p>• Buyer Reviews & Testimonials</p>
+                  <p>• {PLATFORM_PLANS.starter.maxProducts} products</p>
+                  <p>• Discount coupons and customer reviews</p>
+                  <p>• Payment gateway</p>
                 </div>
                 <div className="pt-2 flex items-center justify-between text-xs">
                   <span className="text-neutral-500">Active Stores:</span>
                   <span className="font-mono font-bold text-amber-700">
-                    {stats.starterStores} (₹{(stats.starterStores * 999).toLocaleString("en-IN")}/mo)
+                    {stats.starterStores} (₹{(stats.starterStores * (PLATFORM_PLANS.starter.priceMonthly / 100)).toLocaleString("en-IN")}/mo)
                   </span>
                 </div>
               </div>
@@ -2364,20 +2364,20 @@ function AdminDashboardContent() {
               <div className="p-6 rounded-xl bg-white border border-emerald-300 shadow-xs space-y-4 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-neutral-900 text-base">Pro Unlimited</h3>
+                    <h3 className="font-bold text-neutral-900 text-base">Pro</h3>
                     <p className="text-xs text-neutral-500">High-volume established brands</p>
                   </div>
-                  <span className="text-xl font-black text-emerald-700">₹2,499/mo</span>
+                  <span className="text-xl font-black text-emerald-700">{PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]}/mo</span>
                 </div>
                 <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• Unlimited Products catalog</p>
-                  <p>• Gmail Drops Plugin & Automated Alerts</p>
-                  <p>• Priority Courier & Custom Domains</p>
+                  <p>• Unlimited products and every premium theme</p>
+                  <p>• Own domain, automatic invoices, store app</p>
+                  <p>• Email integration and priority support</p>
                 </div>
                 <div className="pt-2 flex items-center justify-between text-xs">
                   <span className="text-neutral-500">Active Stores:</span>
                   <span className="font-mono font-bold text-emerald-700">
-                    {stats.proStores} (₹{(stats.proStores * 2499).toLocaleString("en-IN")}/mo)
+                    {stats.proStores} (₹{(stats.proStores * (PLATFORM_PLANS.pro.priceMonthly / 100)).toLocaleString("en-IN")}/mo)
                   </span>
                 </div>
               </div>

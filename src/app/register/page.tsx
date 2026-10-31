@@ -343,7 +343,7 @@ function RegisterStoreContent() {
                 <div className="mt-5 rounded-[12px] border border-neutral-200 p-4">
                   <span className="text-sm font-semibold">Included free</span>
                   <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-neutral-600">
-                    {["10 products", "Lume Editorial theme", "UPI QR & Cash on Delivery", "WhatsApp order alerts"].map((t) => (
+                    {["75 products", "2 themes", "UPI QR & Cash on Delivery", "WhatsApp order alerts"].map((t) => (
                       <li key={t} className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-black shrink-0" />
                         {t}

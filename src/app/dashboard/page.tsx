@@ -18,7 +18,7 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS,
   DEFAULT_HOMEPAGE_SECTION_IDS,
 } from "@/lib/store-service";
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, isPaidPlan } from "@/lib/plans";
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent } from "@/lib/plans";
 import { CountUp } from "@/components/home/reveal";
 import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
@@ -1360,7 +1360,7 @@ function DashboardPageContent() {
     {
       label: "Marketing",
       items: [
-        { id: "discounts", label: "Discounts", icon: Tag, badge: store.discounts?.length || 0 },
+        { id: "discounts", label: "Discounts", icon: Tag, badge: canUseCoupons(store.planId) ? store.discounts?.length || 0 : "lock" },
         { id: "banners", label: "Banners", icon: ImageIcon },
       ],
     },
@@ -1370,7 +1370,7 @@ function DashboardPageContent() {
         { id: "themes", label: "Themes", icon: Palette },
         { id: "billing", label: "Subscription", icon: CreditCard },
         { id: "settings", label: "Settings", icon: Settings },
-        { id: "plugins", label: "Plugins", icon: Plug, badge: isPaidPlan(store.planId) ? "active" : "lock" },
+        { id: "plugins", label: "Plugins", icon: Plug, badge: canUseEmail(store.planId) ? "active" : "lock" },
       ],
     },
   ];
@@ -4182,7 +4182,36 @@ function DashboardPageContent() {
       )}
 
         {/* TAB 3.5: DISCOUNTS & COUPONS */}
-        {activeTab === "discounts" && (
+        {activeTab === "discounts" && !canUseCoupons(store.planId) && (
+          <div className="mt-6 animate-enter-blur">
+            <LockedFeature
+              title="Discount coupons"
+              text="Create codes like WELCOME10 that buyers type at checkout to get money off."
+              planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
+              ctaLabel="Unlock with Growth"
+              onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
+              perks={[
+                { icon: Percent, title: "Percent or flat off", text: "10% off or ₹100 off, your choice" },
+                { icon: ShoppingCart, title: "Minimum order rules", text: "Only works above an amount you set" },
+                { icon: TrendingUp, title: "Bring buyers back", text: "Share codes on Instagram and WhatsApp" },
+              ]}
+              preview={
+                <div className="mx-auto max-w-xs space-y-2.5">
+                  {["10%", "₹100"].map((v) => (
+                    <div key={v} className="flex overflow-hidden rounded-2xl bg-white/10">
+                      <span className="flex w-20 items-center justify-center bg-amber-400/80 py-4 text-lg font-bold text-neutral-950">{v}</span>
+                      <span className="flex-1 space-y-1.5 p-3">
+                        <span className="block h-2 w-24 rounded bg-white/50" />
+                        <span className="block h-2 w-32 rounded bg-white/25" />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          </div>
+        )}
+        {activeTab === "discounts" && canUseCoupons(store.planId) && (
           isDiscountModalOpen ? (
             <div className="mt-6 space-y-6 animate-enter-scale">
               {/* Header */}
@@ -5600,9 +5629,19 @@ function DashboardPageContent() {
                           <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">Popular</span>
                         ) : null}
                       </div>
-                      <p className="mt-3 flex items-baseline gap-1">
+                      <p className="mt-3 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                         <span className="text-3xl font-semibold tracking-tight">{plan.priceFormatted.split(" ")[0]}</span>
+                        {plan.originalPriceFormatted && (
+                          <span className={`text-base line-through ${dark ? "text-neutral-500" : "text-neutral-400"}`}>
+                            {plan.originalPriceFormatted.split(" ")[0]}
+                          </span>
+                        )}
                         <span className={`text-sm ${dark ? "text-neutral-400" : "text-neutral-500"}`}>/month</span>
+                        {planDiscountPercent(plan) > 0 && (
+                          <span className="ml-auto self-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
+                            Save {planDiscountPercent(plan)}%
+                          </span>
+                        )}
                       </p>
                       <p className={`mt-2 text-sm ${dark ? "text-neutral-400" : "text-neutral-500"}`}>{plan.description}</p>
                       <ul className={`mt-4 space-y-2.5 border-t pt-4 text-sm ${dark ? "border-white/10 text-neutral-300" : "border-neutral-100 text-neutral-700"}`}>
@@ -5891,13 +5930,13 @@ function DashboardPageContent() {
         {/* TAB 11: PLUGINS & GMAIL AUTOMATION */}
         {activeTab === "plugins" && (
           <div className="mt-6 space-y-6 animate-enter-blur">
-            {!isPaidPlan(store.planId) ? (
-              /* Paywall Gating for Free Plan */
+            {!canUseEmail(store.planId) ? (
+              /* Email integration is a Pro feature */
               <LockedFeature
                 title="Email notifications"
                 text="Connect your Gmail and tell subscribers the moment you add something new."
-                planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
-                ctaLabel="Unlock with Growth"
+                planLabel={`Pro plan · ${PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]}/mo`}
+                ctaLabel="Unlock with Pro"
                 onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
                 perks={[
                   { icon: Mail, title: "Sent from your Gmail", text: "Emails come from you, not a no-reply address" },
@@ -5927,7 +5966,7 @@ function DashboardPageContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
                         Plugin Active
                       </span>
-                      <span className="text-xs text-neutral-300 font-mono">Growth Plan Feature</span>
+                      <span className="text-xs text-neutral-300 font-mono">Pro Plan Feature</span>
                     </div>
                     <h3 className="text-xl font-bold">Email Notifications</h3>
                     <p className="text-xs text-neutral-300 max-w-xl">
@@ -6448,14 +6487,14 @@ function DashboardPageContent() {
                   { id: "products", label: "Products", icon: Package },
                   { id: "categories", label: "Categories", icon: FolderTree },
                   { id: "orders", label: "Orders", icon: ShoppingBag, dot: unfulfilledOrders.length > 0 },
-                  { id: "discounts", label: "Discounts", icon: Tag },
+                  { id: "discounts", label: "Discounts", icon: Tag, locked: !canUseCoupons(store.planId) },
                   { id: "customers", label: "Customers", icon: Users },
                   { id: "reviews", label: "Reviews", icon: Star, locked: !canUseReviews(store.planId) },
                   { id: "banners", label: "Banners", icon: ImageIcon },
                   { id: "themes", label: "Themes", icon: Palette },
                   { id: "billing", label: "Plan", icon: CreditCard },
                   { id: "settings", label: "Settings", icon: Settings },
-                  { id: "plugins", label: "Plugins", icon: Plug, locked: !isPaidPlan(store.planId) },
+                  { id: "plugins", label: "Plugins", icon: Plug, locked: !canUseEmail(store.planId) },
                 ] as { id: DashTab; label: string; icon: React.ElementType; dot?: boolean; locked?: boolean }[]
               ).map((item, i) => {
                 const Icon = item.icon;

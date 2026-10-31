@@ -2476,7 +2476,7 @@ class StoreService {
       else freeStores++;
     });
 
-    const mrr = starterStores * 999 + proStores * 2499;
+    const mrr = starterStores * (PLATFORM_PLANS.starter.priceMonthly / 100) + proStores * (PLATFORM_PLANS.pro.priceMonthly / 100);
 
     return {
       totalStores,

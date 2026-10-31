@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { storeService, StoreData, CustomBrandTheme } from "@/lib/store-service";
-import { isPaidPlan } from "@/lib/plans";
+import { canUseEmail } from "@/lib/plans";
 import { siteConfig } from "@/lib/config/site";
 
 function InstagramIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
@@ -269,9 +269,9 @@ export function StoreFooter({ store, brandTheme: brandThemeProp }: StoreFooterPr
             </ul>
           </div>
 
-          {/* Column 4: Newsletter (Paid Plan Only) & Direct UPI Guarantee */}
+          {/* Column 4: Newsletter (Pro, part of email integration) & Direct UPI Guarantee */}
           <div className="space-y-4">
-            {isPaidPlan(store.planId) ? (
+            {canUseEmail(store.planId) ? (
               <>
                 <h4 className="text-xs font-extrabold uppercase tracking-wider text-neutral-900">
                   Exclusive Perks

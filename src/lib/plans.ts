@@ -6,6 +6,9 @@ export interface PlanFeature {
   tier: "free" | "starter" | "pro";
   priceMonthly: number; // in paise
   priceFormatted: string;
+  /** Pre-discount price shown struck through, in paise */
+  originalPriceMonthly?: number;
+  originalPriceFormatted?: string;
   maxProducts: number;
   themesAllowed: string[];
   customDomain: boolean;
@@ -18,53 +21,55 @@ export interface PlanFeature {
 export const PLATFORM_PLANS: Record<string, PlanFeature> = {
   free: {
     id: "free",
-    name: "Starter Free",
+    name: "Free",
     tier: "free",
     priceMonthly: 0,
     priceFormatted: "₹0 / month",
-    maxProducts: 10,
-    themesAllowed: ["classic-bloom"],
+    maxProducts: 75,
+    themesAllowed: ["classic-bloom"], // + free templates uploaded by the admin (Aurora Showroom)
     customDomain: false,
     maxBanners: 1,
-    description: "Everything a new seller needs to launch online in 60 seconds.",
+    description: "Everything you need to start selling online today.",
     features: [
-      "Up to 10 products in catalog",
-      "Classic Bloom default theme",
-      "Direct UPI payments to your QR/VPA",
-      "Cash on Delivery (COD) support",
-      "Free live subdomain (shopname.shopersite.in)",
-      "Instant WhatsApp order sharing",
-      "Standard order management dashboard",
+      "Up to 75 products",
+      "2 themes",
+      "Cash on Delivery (COD)",
+      "Direct UPI payments",
+      "Free subdomain (yourshop.shopersite.in)",
+      "WhatsApp integration",
     ],
   },
   starter: {
     id: "starter",
-    name: "Growth Plan",
+    name: "Growth",
     tier: "starter",
     priceMonthly: 29900,
     priceFormatted: "₹299 / month",
-    maxProducts: 50,
+    originalPriceMonthly: 49900,
+    originalPriceFormatted: "₹499 / month",
+    maxProducts: 200,
     themesAllowed: ["classic-bloom", "bento-tech", "botanical-wellness"],
     customDomain: false,
     maxBanners: 5,
     highlight: true,
-    description: "Designed for growing boutique sellers with expanding catalogs.",
+    description: "Sell more with coupons, reviews and online payments.",
     features: [
-      "Up to 50 products in catalog",
-      "Starter designer templates, including Bento Tech & Kyoto Botanical",
-      "Multiple promotional hero banners & announcement bar",
-      "Discount coupon & promo code engine",
-      "Customer review moderation & approval",
-      "Direct WhatsApp customer 1-click messaging",
-      "Verified Seller badge on storefront",
+      "Everything in Free",
+      "Up to 200 products",
+      "All Growth themes",
+      "Discount coupons",
+      "Customer reviews",
+      "Payment gateway",
     ],
   },
   pro: {
     id: "pro",
-    name: "Pro Merchant",
+    name: "Pro",
     tier: "pro",
-    priceMonthly: 79900,
-    priceFormatted: "₹799 / month",
+    priceMonthly: 99900,
+    priceFormatted: "₹999 / month",
+    originalPriceMonthly: 149900,
+    originalPriceFormatted: "₹1,499 / month",
     maxProducts: 999999,
     themesAllowed: [
       "classic-bloom",
@@ -76,18 +81,25 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     ],
     customDomain: true,
     maxBanners: 20,
-    description: "For established businesses demanding scale, custom domains & luxury aesthetics.",
+    description: "Run it like a business, on your own domain.",
     features: [
-      "Unlimited products & variants",
-      "Every designer template, including Lookbook, Split Magazine & Sidebar",
-      "Custom domain support (e.g. www.yourshop.in / .com)",
-      "Unlimited promotional banners & sliders",
-      "Remove 'Powered by shopersite' watermark",
-      "Advanced customer insights & analytics",
-      "Priority 24/7 dedicated WhatsApp support",
+      "Everything in Growth",
+      "Unlimited products",
+      "Every premium theme",
+      "Connect your own domain",
+      "Automatic invoices to generate and download",
+      "Email integration",
+      "Your store as an Android app (APK)",
+      "Priority WhatsApp support",
     ],
   },
 };
+
+/** Percentage saved against the original price, e.g. 40 for ₹499 → ₹299. */
+export function planDiscountPercent(plan: PlanFeature): number {
+  if (!plan.originalPriceMonthly || plan.originalPriceMonthly <= plan.priceMonthly) return 0;
+  return Math.round((1 - plan.priceMonthly / plan.originalPriceMonthly) * 100);
+}
 
 export function canAddProduct(currentCount: number, planId: string = "free"): {
   allowed: boolean;
@@ -120,5 +132,15 @@ export function isPaidPlan(planId: string = "free"): boolean {
 
 export function canUseReviews(planId: string = "free"): boolean {
   return isPaidPlan(planId);
+}
+
+/** Discount coupons: Growth and Pro. */
+export function canUseCoupons(planId: string = "free"): boolean {
+  return isPaidPlan(planId);
+}
+
+/** Email integration (Gmail alerts and the store newsletter): Pro only. */
+export function canUseEmail(planId: string = "free"): boolean {
+  return planId === "pro";
 }
 

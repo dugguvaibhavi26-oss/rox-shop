@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { siteConfig } from "@/lib/config/site";
-import { PLATFORM_PLANS } from "@/lib/plans";
+import { PLATFORM_PLANS, planDiscountPercent } from "@/lib/plans";
 import { PLATFORM_THEMES } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import {
@@ -107,7 +107,7 @@ const FAQS = [
   },
   {
     q: "How much does it cost?",
-    a: "You can start free with up to 10 products. Paid plans unlock more products, designer themes, custom domains and marketing tools. We never take a commission on your sales.",
+    a: `You can start free with up to ${PLATFORM_PLANS.free.maxProducts} products. Paid plans unlock more products, designer themes, custom domains and marketing tools. We never take a commission on your sales.`,
   },
   {
     q: "Do you hold or process my customers' money?",
@@ -115,7 +115,7 @@ const FAQS = [
   },
   {
     q: "Can I use my own domain name?",
-    a: "Yes. Custom domains are available on the Pro Merchant plan. Every plan includes a free subdomain.",
+    a: "Yes. Custom domains are available on the Pro plan. Every plan includes a free subdomain.",
   },
   {
     q: "Do I need to be a designer or developer?",
@@ -487,7 +487,7 @@ function Hero({ onClaim }: { onClaim: (v: string) => void }) {
             className="hero-rise group/pill inline-flex items-center gap-2 rounded-[10px] border border-neutral-200 bg-white pl-1.5 pr-3 py-1 text-xs font-medium text-neutral-700 hover:border-neutral-400 transition-colors"
           >
             <span className="rounded-[7px] bg-black text-white px-2 py-0.5 text-[10px] font-semibold">NEW</span>
-            Free plan with 10 products — no card needed
+            Free plan with {PLATFORM_PLANS.free.maxProducts} products — no card needed
             <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover/pill:translate-x-0.5" />
           </a>
 
@@ -1318,10 +1318,20 @@ function Pricing() {
                   )}
                 </div>
                 <p className={cn("mt-2 text-sm", hi ? "text-neutral-400" : "text-neutral-600")}>{plan.description}</p>
-                <div className="mt-6 flex items-baseline gap-1">
+                <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="text-5xl font-semibold tracking-tighter">{plan.priceFormatted.split(" ")[0]}</span>
+                  {plan.originalPriceFormatted && (
+                    <span className={cn("text-lg line-through", hi ? "text-neutral-500" : "text-neutral-400")}>
+                      {plan.originalPriceFormatted.split(" ")[0]}
+                    </span>
+                  )}
                   <span className={cn("text-sm", hi ? "text-neutral-400" : "text-neutral-500")}>/month</span>
                 </div>
+                {planDiscountPercent(plan) > 0 && (
+                  <span className="mt-2 self-start rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
+                    Save {planDiscountPercent(plan)}% · launch offer
+                  </span>
+                )}
 
                 <Link
                   href="/register"
