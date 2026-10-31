@@ -31,19 +31,27 @@ import {
   Phone,
   QrCode,
   Check,
-  ChevronDown,
   Search,
   ShoppingBag,
+  Shirt,
+  Footprints,
+  Gem,
+  Sparkles,
+  Sofa,
+  Cookie,
+  Loader2,
 } from "lucide-react";
 
 const CATEGORIES = [
-  { value: "Fashion & Apparel", label: "Fashion & Apparel" },
-  { value: "Footwear & Accessories", label: "Footwear & Accessories" },
-  { value: "Handicrafts & Jewellery", label: "Handicrafts & Jewellery" },
-  { value: "Beauty & Skincare", label: "Beauty, Cosmetics & Skincare" },
-  { value: "Home & Living", label: "Home Decor & Living" },
-  { value: "Gourmet & Organic Foods", label: "Sweets, Spices & Organic Food" },
+  { value: "Fashion & Apparel", label: "Fashion & Apparel", icon: Shirt },
+  { value: "Footwear & Accessories", label: "Footwear & Accessories", icon: Footprints },
+  { value: "Handicrafts & Jewellery", label: "Handicrafts & Jewellery", icon: Gem },
+  { value: "Beauty & Skincare", label: "Beauty & Skincare", icon: Sparkles },
+  { value: "Home & Living", label: "Home Decor & Living", icon: Sofa },
+  { value: "Gourmet & Organic Foods", label: "Food & Organic", icon: Cookie },
 ];
+
+type QuestionId = "name" | "address" | "category" | "tagline" | "owner" | "phone" | "email" | "password" | "upi";
 
 export default function RegisterStorePage() {
   return (
@@ -58,7 +66,9 @@ function RegisterStoreContent() {
   const searchParams = useSearchParams();
   const { user, signUp } = useAuth();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1); // 3 = launched
+  const [qIndex, setQIndex] = useState(0);
+  const [qError, setQError] = useState("");
   const [storeName, setStoreName] = useState("");
   // Prefill from the home page "claim your shop" form (?subdomain=)
   const [subdomain, setSubdomain] = useState(
@@ -97,24 +107,7 @@ function RegisterStoreContent() {
     }
   };
 
-  const handleCreateStore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeName || !subdomain || !ownerName || !contactPhone || !upiId) {
-      alert("Please fill in all required fields.");
-      return;
-    }
-
-    if (!user) {
-      if (!contactEmail) {
-        alert("Please provide a valid email address for your merchant account.");
-        return;
-      }
-      if (!accountPassword || accountPassword.length < 6) {
-        alert("Please create a password with at least 6 characters for your merchant account.");
-        return;
-      }
-    }
-
+  const handleCreateStore = async () => {
     setIsSubmitting(true);
     try {
       let activeUser = user;
@@ -144,10 +137,62 @@ function RegisterStoreContent() {
       setStep(3);
     } catch (err: any) {
       console.error("Store registration error:", err);
-      alert(err.message || "Failed to create store. Subdomain might be taken or account error.");
+      setQError(err.message || "Couldn't create your store. Try a different web address, or check your email and password.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // One question per screen. Email and password are only asked when not signed in.
+  // Six short steps (five when already signed in); some hold two related fields
+  const steps: { key: string; fields: QuestionId[]; title: string; text: string }[] = [
+    { key: "shop", fields: ["name", "address"], title: "Name your shop.", text: "Pick a name and your free web address. You can change both later." },
+    { key: "category", fields: ["category"], title: "What do you sell?", text: "We'll set up starter collections to match." },
+    { key: "tagline", fields: ["tagline"], title: "Add a tagline.", text: "A short line under your shop name. Optional." },
+    { key: "contact", fields: ["owner", "phone"], title: "How can buyers reach you?", text: "Order alerts and buyer messages come to this WhatsApp number." },
+    ...(user
+      ? []
+      : [{ key: "account", fields: ["email", "password"] as QuestionId[], title: "Create your login.", text: "You'll use these to sign in to your seller dashboard." }]),
+    { key: "upi", fields: ["upi"], title: "Where should buyers pay you?", text: "Payments go straight to this UPI ID." },
+  ];
+  const current = steps[Math.min(qIndex, steps.length - 1)];
+  const fields = current.fields;
+  const isLast = qIndex >= steps.length - 1;
+
+  const validate = (id: QuestionId): string => {
+    switch (id) {
+      case "name":
+        return storeName.trim() ? "" : "Give your shop a name.";
+      case "address": {
+        if (subdomain.length < 3) return "Use at least 3 letters or numbers.";
+        const taken = storeService.getStore(subdomain);
+        return taken ? `${subdomain}.${siteConfig.domain} is taken. Try another.` : "";
+      }
+      case "owner":
+        return ownerName.trim() ? "" : "Tell us your name.";
+      case "phone":
+        return contactPhone.replace(/\D/g, "").length >= 10 ? "" : "Enter a 10-digit WhatsApp number.";
+      case "email":
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim()) ? "" : "Enter a valid email address.";
+      case "password":
+        return accountPassword.length >= 6 ? "" : "Use at least 6 characters.";
+      case "upi":
+        return /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upiId.trim()) ? "" : "Enter a UPI ID like yourname@okaxis.";
+      default:
+        return "";
+    }
+  };
+
+  const goNext = () => {
+    const err = fields.map(validate).find(Boolean);
+    if (err) return setQError(err);
+    setQError("");
+    if (isLast) handleCreateStore();
+    else setQIndex(qIndex + 1);
+  };
+  const goBack = () => {
+    setQError("");
+    setQIndex(Math.max(0, qIndex - 1));
   };
 
   return (
@@ -156,212 +201,211 @@ function RegisterStoreContent() {
       aside={<StorePreview storeName={storeName} subdomain={subdomain} tagline={tagline} category={category} live={step === 3} />}
     >
       {step < 3 && (
-        <>
-          <StepIndicator step={step} />
-          <AuthHeading
-            title={step === 1 ? "Name your shop." : "Set up payments."}
-            text={
-              step === 1
-                ? "Pick a name and web address. You can change everything later."
-                : "Tell buyers how to reach you and where to send their payments."
-            }
-          />
-        </>
-      )}
-
-      {/* STEP 1: Store Profile & Subdomain */}
-      {step === 1 && (
         <form
-          className="space-y-5"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!storeName.trim() || !subdomain.trim()) {
-              alert("Please provide both your store name and desired domain.");
-              return;
-            }
-            setStep(2);
+            goNext();
           }}
+          noValidate
         >
-          <AuthInput
-            label="Store / brand name"
-            icon={Store}
-            placeholder="e.g. Lume Apparel"
-            value={storeName}
-            onChange={(e) => handleStoreNameChange(e.target.value)}
-            autoFocus
-            required
-          />
+          <StepIndicator current={qIndex + 1} total={steps.length} />
 
-          <AuthInput
-            label="Your free web address"
-            placeholder="yourstore"
-            value={subdomain}
-            onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
-            suffix={`.${siteConfig.domain}`}
-            hint={
+          <div key={current.key} className="animate-enter-blur space-y-4">
+            <AuthHeading title={current.title} text={current.text} />
+
+            {fields.includes("name") && (
+              <AuthInput
+                label="Shop name"
+                icon={Store}
+                placeholder="e.g. Lume Apparel"
+                value={storeName}
+                onChange={(e) => (handleStoreNameChange(e.target.value), setQError(""))}
+                autoFocus
+              />
+            )}
+
+            {fields.includes("address") && (
+              <AuthInput
+                label="Web address"
+                placeholder="yourstore"
+                value={subdomain}
+                onChange={(e) => (setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30)), setQError(""))}
+                suffix={`.${siteConfig.domain}`}
+                hint={
+                  <>
+                    Your store will be live at{" "}
+                    <span className="font-semibold text-black">
+                      {subdomain || "yourshop"}.{siteConfig.domain}
+                    </span>
+                  </>
+                }
+              />
+            )}
+
+            {fields.includes("category") && (
+              <div className="grid grid-cols-2 gap-2.5">
+                {CATEGORIES.map((c) => {
+                  const on = category === c.value;
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setCategory(c.value)}
+                      className={cn(
+                        "flex flex-col items-start gap-3 rounded-[14px] border p-3.5 text-left text-sm font-medium transition-all",
+                        on ? "border-black bg-black text-white" : "border-neutral-200 hover:border-neutral-400"
+                      )}
+                    >
+                      <c.icon className="w-5 h-5" />
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {fields.includes("tagline") && (
+              <AuthInput
+                label="Tagline"
+                placeholder="e.g. Style that moves with you"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                autoFocus
+              />
+            )}
+
+            {fields.includes("owner") && (
+              <AuthInput
+                label="Your name"
+                icon={User}
+                autoComplete="name"
+                placeholder="e.g. Ramesh Chandra"
+                value={ownerName}
+                onChange={(e) => (setOwnerName(e.target.value), setQError(""))}
+                autoFocus
+              />
+            )}
+
+            {fields.includes("phone") && (
+              <AuthInput
+                label="WhatsApp number"
+                icon={Phone}
+                type="tel"
+                autoComplete="tel"
+                placeholder="+91 98765 43210"
+                value={contactPhone}
+                onChange={(e) => (setContactPhone(e.target.value), setQError(""))}
+              />
+            )}
+
+            {fields.includes("email") && (
+              <AuthInput
+                label="Email"
+                icon={Mail}
+                type="email"
+                autoComplete="email"
+                placeholder="you@yourbrand.com"
+                value={contactEmail}
+                onChange={(e) => (setContactEmail(e.target.value), setQError(""))}
+                autoFocus
+              />
+            )}
+
+            {fields.includes("password") && (
+              <AuthInput
+                label="Password"
+                icon={Lock}
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="At least 6 characters"
+                value={accountPassword}
+                onChange={(e) => (setAccountPassword(e.target.value), setQError(""))}
+                trailing={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword(!showPassword)} />}
+              />
+            )}
+
+            {fields.includes("upi") && (
               <>
-                Your store will be live at{" "}
-                <span className="font-semibold text-black">
-                  {subdomain || "yourshop"}.{siteConfig.domain}
-                </span>
+                <AuthInput
+                  label="UPI ID"
+                  icon={QrCode}
+                  placeholder="e.g. ramesh@okhdfcbank"
+                  value={upiId}
+                  onChange={(e) => (setUpiId(e.target.value), setQError(""))}
+                  autoFocus
+                  hint={
+                    <span className="flex items-start gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-px text-black" />
+                      Buyers pay you directly. {siteConfig.name} never holds or pools your money.
+                    </span>
+                  }
+                />
+                <div className="mt-5 rounded-[12px] border border-neutral-200 p-4">
+                  <span className="text-sm font-semibold">Included free</span>
+                  <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-neutral-600">
+                    {["10 products", "Lume Editorial theme", "UPI QR & Cash on Delivery", "WhatsApp order alerts"].map((t) => (
+                      <li key={t} className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-black shrink-0" />
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </>
-            }
-            required
-          />
+            )}
 
-          <div>
-            <label htmlFor="category" className="block text-sm font-semibold mb-2">
-              What do you sell?
-            </label>
-            <div className="relative">
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-12 appearance-none rounded-[12px] border border-neutral-300 bg-white px-4 pr-10 text-[15px] focus:outline-none focus:border-black focus:ring-4 focus:ring-black/5"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-neutral-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            {qError && <p className="mt-3 text-sm font-medium text-red-600">{qError}</p>}
           </div>
 
-          <AuthInput
-            label="Tagline (optional)"
-            placeholder="e.g. Style That Moves With You"
-            value={tagline}
-            onChange={(e) => setTagline(e.target.value)}
-          />
-
-          <AuthButton type="submit" className="!mt-7">
-            Continue
-            <ArrowRight className="w-4 h-4" />
-          </AuthButton>
-        </form>
-      )}
-
-      {/* STEP 2: Owner Contact & Direct UPI */}
-      {step === 2 && (
-        <form onSubmit={handleCreateStore} className="space-y-5">
-          {user ? (
-            <div className="p-3.5 rounded-[12px] bg-neutral-100 text-sm flex items-center justify-between gap-3">
-              <span className="truncate">
-                Logged in as <strong>{user.email}</strong>
-              </span>
-              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold bg-black text-white px-2 py-1 rounded-[7px]">
-                <Check className="w-3 h-3" />
-                Verified
-              </span>
-            </div>
-          ) : (
-            <p className="p-3.5 rounded-[12px] bg-neutral-100 text-sm text-neutral-600">
-              We&apos;ll create your seller account with these details so you can log in to your dashboard.
-            </p>
-          )}
-
-          <AuthInput
-            label="Your name"
-            icon={User}
-            autoComplete="name"
-            placeholder="e.g. Ramesh Chandra"
-            value={ownerName}
-            onChange={(e) => setOwnerName(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <AuthInput
-              label="WhatsApp number"
-              icon={Phone}
-              type="tel"
-              autoComplete="tel"
-              placeholder="+91 98765 43210"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              required
-            />
-            <AuthInput
-              label="Email"
-              icon={Mail}
-              type="email"
-              autoComplete="email"
-              placeholder="you@yourbrand.com"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              required
-              disabled={!!user}
-            />
-          </div>
-
-          {!user && (
-            <AuthInput
-              label="Create a password"
-              icon={Lock}
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              placeholder="At least 6 characters"
-              value={accountPassword}
-              onChange={(e) => setAccountPassword(e.target.value)}
-              trailing={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword(!showPassword)} />}
-              hint="You'll use this to log in to your seller dashboard."
-              required
-            />
-          )}
-
-          <AuthInput
-            label="UPI ID for payments"
-            icon={QrCode}
-            placeholder="e.g. ramesh@okhdfcbank"
-            value={upiId}
-            onChange={(e) => setUpiId(e.target.value)}
-            hint={
-              <span className="flex items-start gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-px text-black" />
-                Buyers pay you directly. {siteConfig.name} never holds or pools your money.
-              </span>
-            }
-            required
-          />
-
-          <div className="rounded-[12px] border border-neutral-200 p-4">
-            <span className="text-sm font-semibold">Included free</span>
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-neutral-600">
-              {["10 products", "Lume Editorial theme", "UPI QR & Cash on Delivery", "WhatsApp order alerts"].map((t) => (
-                <li key={t} className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-black shrink-0" />
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="flex gap-3 !mt-7">
-            <AuthButton type="button" variant="outline" className="!w-auto px-5" onClick={() => setStep(1)}>
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </AuthButton>
+          <div className="mt-7 flex items-center gap-3">
+            {qIndex > 0 && (
+              <AuthButton type="button" variant="outline" className="!w-auto px-4" onClick={goBack} aria-label="Back">
+                <ArrowLeft className="w-4 h-4" />
+              </AuthButton>
+            )}
+            {current.key === "tagline" && !tagline && (
+              <button type="button" onClick={goNext} className="px-3 h-12 text-sm font-semibold text-neutral-500 hover:text-black transition-colors">
+                Skip
+              </button>
+            )}
             <AuthButton type="submit" loading={isSubmitting} loadingText="Launching your shop…" className="flex-1">
-              Launch my store
+              {isLast ? "Launch my store" : "Continue"}
               <ArrowRight className="w-4 h-4" />
             </AuthButton>
           </div>
+          {user && qIndex === 0 && (
+            <p className="mt-4 text-xs text-neutral-500">
+              Signed in as <span className="font-semibold text-neutral-800">{user.email}</span>
+            </p>
+          )}
         </form>
       )}
 
       {/* STEP 3: Celebration & Instant Links */}
       {step === 3 && (
         <div>
-          <div className="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center">
-            <CheckCircle className="w-7 h-7" />
+          <div className="relative w-16 h-16">
+            <span className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping [animation-iteration-count:2]" />
+            <span className="relative w-16 h-16 rounded-full bg-black text-white flex items-center justify-center animate-pill-pop">
+              <CheckCircle className="w-8 h-8" />
+            </span>
           </div>
-          <AuthHeading
-            title={`${storeName} is live!`}
-            text="Your store is ready with starter products, UPI checkout and the Lume Editorial theme."
-          />
+          <AuthHeading title={`${storeName} is live!`} text="Your store is set up and ready for its first order." />
+
+          <ul className="mb-5 space-y-2">
+            {["Store address claimed", "UPI checkout connected", "Lume Editorial theme applied", "Starter collections added"].map((t, i) => (
+              <li
+                key={t}
+                className="flex items-center gap-2.5 text-sm text-neutral-700 animate-enter-blur"
+                style={{ animationDelay: `${200 + i * 120}ms` }}
+              >
+                <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="w-3 h-3" strokeWidth={3} />
+                </span>
+                {t}
+              </li>
+            ))}
+          </ul>
 
           <div className="rounded-[12px] border border-neutral-200 p-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -403,13 +447,15 @@ function RegisterStoreContent() {
   );
 }
 
-function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
+function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
     <div className="mb-6 flex items-center gap-3 text-xs font-semibold">
-      <span className="text-neutral-500">Step {step} of 2</span>
-      <div className="flex-1 flex gap-1.5">
-        {[1, 2].map((s) => (
-          <span key={s} className={cn("h-1 flex-1 rounded-full transition-colors", s <= step ? "bg-black" : "bg-neutral-200")} />
+      <span className="text-neutral-500 tabular-nums">
+        {current} of {total}
+      </span>
+      <div className="flex-1 flex gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <span key={i} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i < current ? "bg-black" : "bg-neutral-200")} />
         ))}
       </div>
     </div>

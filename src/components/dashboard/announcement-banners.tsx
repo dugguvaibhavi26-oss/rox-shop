@@ -47,7 +47,7 @@ export function AnnouncementBanners({ onOpenTab }: { onOpenTab?: (tab: string) =
 
   if (count === 0) {
     return (
-      <div className="aspect-[16/5] w-full rounded-2xl border border-dashed border-neutral-300 bg-neutral-100/70 flex items-center justify-center">
+      <div className="aspect-[2/1] md:aspect-[3/1] w-full rounded-2xl border border-dashed border-neutral-300 bg-neutral-100/70 flex items-center justify-center">
         <ImageIcon className="w-8 h-8 text-neutral-300" aria-hidden />
       </div>
     );
@@ -67,7 +67,7 @@ export function AnnouncementBanners({ onOpenTab }: { onOpenTab?: (tab: string) =
           key={b.id}
           type="button"
           onClick={() => open(b.link)}
-          className={`group relative shrink-0 snap-start w-full aspect-[16/5] overflow-hidden bg-neutral-100 ${b.link ? "cursor-pointer" : "cursor-default"}`}
+          className={`group relative shrink-0 snap-start w-full aspect-[2/1] md:aspect-[3/1] overflow-hidden bg-neutral-100 ${b.link ? "cursor-pointer" : "cursor-default"}`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={b.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]" />

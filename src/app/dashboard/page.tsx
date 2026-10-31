@@ -23,6 +23,7 @@ import { CountUp } from "@/components/home/reveal";
 import { ShopperWordmark } from "@/components/brand/shopper-wordmark";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
 import { HelpAndMore } from "@/components/dashboard/help-and-more";
+import { SetupWizard, SETUP_STEPS, isSetupStepDone } from "@/components/dashboard/setup-wizard";
 import { PLATFORM_THEMES, getTheme, ThemeDefinition } from "@/lib/themes";
 import { AVAILABLE_FONTS, getFontFamily } from "@/lib/fonts";
 import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
@@ -95,6 +96,7 @@ import {
   SlidersHorizontal,
   IndianRupee,
   ArrowUpRight,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function DashboardPageWrapper() {
@@ -128,6 +130,24 @@ function DashboardPageContent() {
     "overview" | "products" | "categories" | "orders" | "discounts" | "customers" | "reviews" | "banners" | "themes" | "billing" | "settings" | "plugins" | "notifications" | "profile"
   >((urlTabParam as any) || "overview");
 
+  // Remember the pages visited so each page's back button can return to the previous one
+  const tabHistory = React.useRef<(typeof activeTab)[]>([]);
+  const lastTab = React.useRef(activeTab);
+  const goingBack = React.useRef(false);
+  useEffect(() => {
+    if (lastTab.current !== activeTab) {
+      if (!goingBack.current) tabHistory.current = [...tabHistory.current, lastTab.current].slice(-20);
+      goingBack.current = false;
+      lastTab.current = activeTab;
+    }
+  }, [activeTab]);
+  const goBackTab = () => {
+    const previous = tabHistory.current.pop();
+    goingBack.current = true;
+    setActiveTab(previous && previous !== activeTab ? previous : "overview");
+    window.scrollTo({ top: 0 });
+  };
+
   useEffect(() => {
     if (urlTabParam && urlTabParam !== activeTab) {
       setActiveTab(urlTabParam as any);
@@ -156,6 +176,25 @@ function DashboardPageContent() {
 
   // Notifications Drawer State
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = React.useRef<HTMLDivElement>(null);
+
+  // Close the notifications card on any tap outside it, a scroll, Escape or a page change
+  useEffect(() => {
+    if (!isNotificationOpen) return;
+    const close = () => setIsNotificationOpen(false);
+    const onPointerDown = (e: PointerEvent) => {
+      if (!notificationRef.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close);
+    };
+  }, [isNotificationOpen]);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
   const [notifications, setNotifications] = useState([
     {
@@ -197,6 +236,8 @@ function DashboardPageContent() {
 
   // Discounts & Coupons Modal State
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  // Setup checklist: step-by-step card, opened at the step that was tapped
+  const [setupStart, setSetupStart] = useState<number | null>(null);
   const [dCode, setDCode] = useState("");
   const [dType, setDType] = useState<"percentage" | "flat">("percentage");
   const [dValue, setDValue] = useState("");
@@ -1349,6 +1390,15 @@ function DashboardPageContent() {
           ? { icon: Sparkles, tone: "bg-violet-50 text-violet-600" }
           : { icon: Bell, tone: "bg-sky-50 text-sky-600" };
 
+  const startAddProduct = () => {
+    if (!productQuota.allowed) {
+      setActiveTab("billing");
+      return;
+    }
+    resetProductForm();
+    setIsProductModalOpen(true);
+    setActiveTab("products");
+  };
   const copyStoreLink = () => {
     navigator.clipboard.writeText(storePublicUrl);
     setCopiedLink(true);
@@ -1378,17 +1428,22 @@ function DashboardPageContent() {
             </button>
           </div>
 
-          {/* the logo only links to the main site on desktop; on phones it's just the brand mark */}
-          <Link
-            href="/"
-            aria-label={siteConfig.name}
-            className="justify-self-center text-neutral-950 transition-opacity pointer-events-none md:pointer-events-auto md:hover:opacity-70"
+          {/* the logo takes you back to the overview */}
+          <button
+            type="button"
+            aria-label={`${siteConfig.name} overview`}
+            onClick={() => {
+              setActiveTab("overview");
+              setIsNotificationOpen(false);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="justify-self-center text-neutral-950 transition-opacity hover:opacity-70"
           >
             <ShopperWordmark className="h-9 w-auto" />
-          </Link>
+          </button>
 
           <div className="flex items-center justify-end">
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsNotificationOpen((o) => !o)}
@@ -1406,7 +1461,6 @@ function DashboardPageContent() {
 
               {isNotificationOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
                   <div className="absolute right-0 top-12 z-50 w-[340px] max-w-[calc(100vw-24px)] rounded-[16px] bg-white border border-neutral-200 shadow-[0_24px_60px_-16px_rgba(0,0,0,0.28)] overflow-hidden animate-in zoom-in-95 origin-top-right">
                     <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
                       <span className="flex items-center gap-2 text-sm font-semibold">
@@ -1597,9 +1651,19 @@ function DashboardPageContent() {
         <main className="flex-1 p-4 sm:p-8 pb-28 md:pb-12 max-w-7xl w-full mx-auto">
           {/* Page title (overview greets you inside the hero card) */}
           {activeTab !== "overview" && (
-            <div className="mb-6 sm:mb-8 hero-rise">
-              <h1 className="text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">{pageTitles[activeTab].title}</h1>
-              <p className="mt-1 text-sm text-neutral-500">{pageTitles[activeTab].text}</p>
+            <div className="mb-6 sm:mb-8 hero-rise flex items-start gap-3 sm:gap-4">
+              <button
+                type="button"
+                onClick={goBackTab}
+                aria-label="Back"
+                className="group mt-0.5 sm:mt-1 w-10 h-10 shrink-0 rounded-[12px] border border-neutral-200 bg-white flex items-center justify-center text-neutral-700 hover:border-neutral-900 hover:text-black transition-colors"
+              >
+                <ArrowLeft className="w-[18px] h-[18px] transition-transform duration-300 group-hover:-translate-x-0.5" />
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">{pageTitles[activeTab].title}</h1>
+                <p className="mt-1 text-sm text-neutral-500">{pageTitles[activeTab].text}</p>
+              </div>
             </div>
           )}
 
@@ -1968,14 +2032,7 @@ function DashboardPageContent() {
                   {/* Add product — wide, top */}
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!productQuota.allowed) {
-                        setActiveTab("billing");
-                        return;
-                      }
-                      resetProductForm();
-                      setIsProductModalOpen(true);
-                    }}
+                    onClick={startAddProduct}
                     className="group relative overflow-hidden col-span-3 text-left rounded-2xl bg-neutral-950 text-white px-5 sm:px-7 flex items-center justify-between gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_48px_-24px_rgba(0,0,0,0.6)]"
                   >
                     <span aria-hidden className="pointer-events-none absolute -left-16 -top-20 w-64 h-64 rounded-full bg-indigo-500/25 blur-3xl transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
@@ -2122,14 +2179,11 @@ function DashboardPageContent() {
 
               {/* Setup checklist */}
               {(() => {
-                const steps = [
-                  { label: "Add your store logo", done: Boolean(store.logoUrl), tab: "settings" as const },
-                  { label: `Add 5 products (${Math.min(totalProducts, 5)}/5)`, done: totalProducts >= 5, tab: "products" as const },
-                  { label: "Set up UPI payments", done: Boolean(store.upiId?.trim()), tab: "settings" as const },
-                  { label: "Upload a storefront banner", done: store.banners.length > 0, tab: "banners" as const },
-                  { label: "Create a discount code", done: (store.discounts?.length || 0) > 0, tab: "discounts" as const },
-                  { label: "Link your Instagram", done: Boolean(store.instagramHandle?.trim()), tab: "settings" as const },
-                ];
+                const steps = SETUP_STEPS.map((st, i) => ({
+                  label: st.id === "products" ? `${st.title} (${Math.min(totalProducts, 5)}/5)` : st.title,
+                  done: isSetupStepDone(store, st.id),
+                  run: () => setSetupStart(i),
+                }));
                 const doneCount = steps.filter((st) => st.done).length;
                 const allDone = doneCount === steps.length;
                 return (
@@ -2162,7 +2216,7 @@ function DashboardPageContent() {
                           key={st.label}
                           type="button"
                           disabled={st.done}
-                          onClick={() => setActiveTab(st.tab)}
+                          onClick={st.run}
                           className="group flex items-center gap-3 py-2.5 border-b border-neutral-100 md:[&:nth-last-child(-n+2)]:border-b-0 last:border-b-0 text-left disabled:cursor-default"
                         >
                           {st.done ? (
@@ -6180,6 +6234,12 @@ function DashboardPageContent() {
           </button>
         </div>
       </div>
+
+
+      {/* Setup checklist: one step at a time, in a card in the middle of the screen */}
+      {setupStart !== null && (
+        <SetupWizard store={store} startAt={setupStart} onClose={() => setSetupStart(null)} onChanged={refreshStore} />
+      )}
 
       {/* Mobile menu: floating card that pops up above the bottom bar */}
       {isMobileMenuOpen && (

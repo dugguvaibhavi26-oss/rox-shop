@@ -665,7 +665,7 @@ function FeatureCard({
 }) {
   return (
     // On phones every card sticks a little lower than the last, so they pile up like a deck
-    <div data-stack-card className="max-md:sticky" style={{ top: `${88 + index * 14}px` }}>
+    <div data-stack-card className="max-md:sticky" style={{ top: `calc(var(--stack-top, 88px) + ${index * 12}px)` }}>
       <Reveal delay={delay} variant={from} spotlight className={cn("group flex flex-col", className)}>
         <div
           data-stack-face
@@ -742,18 +742,66 @@ function FeatureCards() {
     .filter(Boolean)
     .slice(0, 5) as string[];
   const stackRef = React.useRef<HTMLDivElement>(null);
+  const headingRef = React.useRef<HTMLDivElement>(null);
   useCardStack(stackRef);
+
+  // Cards pin just below the pinned heading, whatever height it wraps to
+  React.useEffect(() => {
+    const heading = headingRef.current;
+    const stack = stackRef.current;
+    if (!heading || !stack || typeof ResizeObserver === "undefined") return;
+    const sync = () => stack.style.setProperty("--stack-top", `${64 + heading.offsetHeight + 8}px`);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(heading);
+    return () => ro.disconnect();
+  }, []);
+
+  // Phones: once the stack stops being pinned, the heading scrolls away together with it,
+  // as if the whole block were ordinary content
+  React.useEffect(() => {
+    const heading = headingRef.current;
+    const stack = stackRef.current;
+    if (!heading || !stack || typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    let shift = 0;
+    const update = () => {
+      const first = stack.querySelector<HTMLElement>("[data-stack-card]");
+      if (!mq.matches || !first) {
+        shift = 0;
+        heading.style.transform = "";
+        return;
+      }
+      // The heading sits 8px above the first card while the stack is pinned. When the stack
+      // starts scrolling away, keep that same gap so the heading leaves with it.
+      const naturalTop = heading.getBoundingClientRect().top - shift;
+      const anchoredTop = first.getBoundingClientRect().top - 8 - heading.offsetHeight;
+      shift = Math.min(0, anchoredTop - naturalTop);
+      heading.style.transform = shift ? `translateY(${shift}px)` : "";
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   return (
     <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32">
-      <SectionIntro
-        eyebrow="Everything you need"
-        title="Sell more with less effort."
-        effect="fill"
-        text="One platform for your store, payments, orders and marketing. Built for sellers who grew on social."
-      />
+      <div>
+      {/* On phones the heading stays pinned under the menu bar while the cards stack beneath it */}
+      <div ref={headingRef} className="max-md:sticky max-md:top-[64px] max-md:z-20 max-md:-mx-4 max-md:px-4 max-md:pt-4 max-md:pb-3 max-md:bg-white">
+        <SectionIntro eyebrow="Everything you need" title="Sell more with less effort." effect="fill" />
+      </div>
+      <Reveal className="max-w-2xl mx-auto text-center">
+        <p className="mt-5 max-md:mt-1 text-base sm:text-lg leading-relaxed text-balance text-neutral-600">
+          One platform for your store, payments, orders and marketing. Built for sellers who grew on social.
+        </p>
+      </Reveal>
 
-      <div ref={stackRef} className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-14 max-md:gap-y-[38vh] max-md:pb-6">
+      <div ref={stackRef} className="mt-14 max-md:mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-14 max-md:gap-y-5 max-md:pb-6">
         <FeatureCard
           index={0}
           eyebrow="Customizable themes"
@@ -811,6 +859,7 @@ function FeatureCards() {
         >
           <SalesChart className="w-72" />
         </FeatureCard>
+      </div>
       </div>
     </section>
   );
@@ -1290,7 +1339,7 @@ function SiteFooter() {
         </div>
 
         <div className="mt-20 pt-8 border-t border-white/10 flex flex-col-reverse sm:flex-row items-center justify-between gap-4 text-xs">
-          <span>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Roxten Studios Pvt Ltd. All rights reserved.</span>
           <div className="flex items-center gap-2">
             <Palette className="w-3.5 h-3.5" />
             <span>{siteConfig.domain}</span>
