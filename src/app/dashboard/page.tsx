@@ -20,7 +20,7 @@ import {
 } from "@/lib/store-service";
 import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, isPaidPlan } from "@/lib/plans";
 import { CountUp } from "@/components/home/reveal";
-import { ShopperWordmark } from "@/components/brand/shopper-wordmark";
+import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
 import { HelpAndMore } from "@/components/dashboard/help-and-more";
 import { SetupWizard, SETUP_STEPS, isSetupStepDone } from "@/components/dashboard/setup-wizard";
@@ -66,6 +66,7 @@ import {
   Search,
   UploadCloud,
   Eye,
+  EyeOff,
   Monitor,
   Smartphone,
   Tablet,
@@ -89,6 +90,7 @@ import {
   Info,
   Activity,
   Menu,
+  MoreVertical,
   Clock,
   Percent,
   ShoppingCart,
@@ -169,6 +171,15 @@ function DashboardPageContent() {
       }
     }
   }, [urlTabParam]);
+
+  // Keep the open page in the URL so a refresh lands back on it
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeTab === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", activeTab);
+    url.searchParams.delete("action");
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url.href);
+  }, [activeTab]);
 
   // Time-Range Filters & Performance Metrics
   const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7d" | "30d">("today");
@@ -259,6 +270,11 @@ function DashboardPageContent() {
 
   // Add/Edit Product Modal
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  // list filters for the products, orders and customers pages
+  const [productSearch, setProductSearch] = useState("");
+  const [productFilter, setProductFilter] = useState<"all" | "in" | "low" | "out">("all");
+  const [orderFilter, setOrderFilter] = useState<"all" | "toship" | "shipped" | "delivered">("all");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [pTitle, setPTitle] = useState("");
   const [pCategory, setPCategory] = useState("");
@@ -283,6 +299,7 @@ function DashboardPageContent() {
   const [cSelectedChildren, setCSelectedChildren] = useState<string[]>([]);
   const [catSearchQuery, setCatSearchQuery] = useState("");
   const [categoryViewTab, setCategoryViewTab] = useState<"categories" | "collections">("categories");
+  const [catMenuId, setCatMenuId] = useState<string | null>(null);
 
   // Brand Logo State
   const [logoUrlInput, setLogoUrlInput] = useState("");
@@ -1285,7 +1302,7 @@ function DashboardPageContent() {
             <Store className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-neutral-900">Welcome to Shopper!</h2>
+            <h2 className="text-lg font-bold text-neutral-900">Welcome to {siteConfig.name}!</h2>
             <p className="text-xs text-neutral-500 mt-1">
               Signed in as <strong>{user.email}</strong>. You have not created an online store yet.
             </p>
@@ -1360,7 +1377,7 @@ function DashboardPageContent() {
   const pageTitles: Record<DashTab, { title: string; text: string }> = {
     overview: { title: "", text: "" },
     products: { title: "Products", text: "Manage your products, pricing, and stock." },
-    categories: { title: "Categories & collections", text: "Organize products into categories and homepage collections." },
+    categories: { title: "Categories", text: "Organize products into categories and homepage collections." },
     orders: { title: "Orders", text: "Track customer orders and shipments." },
     discounts: { title: "Discounts", text: "Create promo codes and discount coupons." },
     customers: { title: "Customers", text: "View your customers and order history." },
@@ -1448,7 +1465,7 @@ function DashboardPageContent() {
             }}
             className="justify-self-center text-neutral-950 transition-opacity hover:opacity-70"
           >
-            <ShopperWordmark className="h-9 w-auto" />
+            <ShopperLogo className="text-[20px]" />
           </button>
 
           <div className="flex items-center justify-end">
@@ -1660,18 +1677,18 @@ function DashboardPageContent() {
         <main className="flex-1 p-4 sm:p-8 pb-28 md:pb-12 max-w-7xl w-full mx-auto">
           {/* Page title (overview greets you inside the hero card) */}
           {activeTab !== "overview" && (
-            <div className="mb-6 sm:mb-8 hero-rise flex items-start gap-3 sm:gap-4">
+            <div className="mb-5 sm:mb-8 hero-rise flex items-center sm:items-start gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={goBackTab}
                 aria-label="Back"
-                className="group mt-0.5 sm:mt-1 w-10 h-10 shrink-0 rounded-[12px] border border-neutral-200 bg-white flex items-center justify-center text-neutral-700 hover:border-neutral-900 hover:text-black transition-colors"
+                className="group sm:mt-1 w-10 h-10 shrink-0 rounded-[12px] border border-neutral-200 bg-white flex items-center justify-center text-neutral-700 hover:border-neutral-900 hover:text-black transition-colors"
               >
                 <ArrowLeft className="w-[18px] h-[18px] transition-transform duration-300 group-hover:-translate-x-0.5" />
               </button>
               <div className="min-w-0">
-                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">{pageTitles[activeTab].title}</h1>
-                <p className="mt-1 text-sm text-neutral-500">{pageTitles[activeTab].text}</p>
+                <h1 className="truncate text-[1.6rem] sm:text-[1.9rem] font-semibold tracking-tight leading-tight">{pageTitles[activeTab].title}</h1>
+                <p className="hidden sm:block mt-1 text-sm text-neutral-500">{pageTitles[activeTab].text}</p>
               </div>
             </div>
           )}
@@ -2841,96 +2858,183 @@ function DashboardPageContent() {
               </form>
             </div>
           ) : (
-            <div className="mt-6 space-y-6 animate-enter-blur">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-lg bg-white border border-neutral-200">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900">All Products</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    {totalProducts} product{totalProducts !== 1 ? "s" : ""} in your catalog
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  className="gap-1.5 bg-[#111111] text-white hover:bg-black rounded-md text-xs cursor-pointer"
-                  onClick={() => {
-                    if (!productQuota.allowed) {
-                      setActiveTab("billing");
-                      return;
-                    }
-                    resetProductForm();
-                    setIsProductModalOpen(true);
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Product</span>
-                </Button>
-              </div>
-
-              {/* Product List */}
-              <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden divide-y divide-neutral-100">
-                {store.products.map((prod, idx) => (
-                  <div
-                    key={prod.id}
-                    className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors animate-enter-slide-up stagger-${(idx % 6) + 1}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={prod.images[0]}
-                        alt={prod.title}
-                        className="w-12 h-14 rounded-md object-cover border border-neutral-200 shrink-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-neutral-900">{prod.title}</h4>
-                          <Badge variant="neutral" className="text-[10px] py-0">
-                            {prod.category}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs">
-                          <span className="font-bold text-neutral-900">
-                            ₹{(prod.price / 100).toLocaleString("en-IN")}
+            <div className="space-y-5 animate-enter-blur">
+              {(() => {
+                const LOW = 5;
+                const counts = {
+                  all: store.products.length,
+                  in: store.products.filter((p) => p.stock > LOW).length,
+                  low: store.products.filter((p) => p.stock > 0 && p.stock <= LOW).length,
+                  out: store.products.filter((p) => p.stock <= 0).length,
+                };
+                const q = productSearch.trim().toLowerCase();
+                const list = store.products.filter((p) => {
+                  const stockOk =
+                    productFilter === "all" ||
+                    (productFilter === "in" && p.stock > LOW) ||
+                    (productFilter === "low" && p.stock > 0 && p.stock <= LOW) ||
+                    (productFilter === "out" && p.stock <= 0);
+                  return stockOk && (!q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+                });
+                const startAdd = () => {
+                  if (!productQuota.allowed) {
+                    setActiveTab("billing");
+                    return;
+                  }
+                  resetProductForm();
+                  setIsProductModalOpen(true);
+                };
+                return (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      {[
+                        { id: "all" as const, label: "All products", dot: "bg-neutral-900" },
+                        { id: "in" as const, label: "In stock", dot: "bg-emerald-500" },
+                        { id: "low" as const, label: "Low stock", dot: "bg-amber-500" },
+                        { id: "out" as const, label: "Sold out", dot: "bg-rose-500" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setProductFilter(f.id)}
+                          className={`rounded-2xl border bg-white p-4 text-left transition-all ${
+                            productFilter === f.id ? "border-neutral-900 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.5)]" : "border-neutral-200 hover:border-neutral-300"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 text-xs text-neutral-500">
+                            <span className={`w-1.5 h-1.5 rounded-full ${f.dot}`} />
+                            {f.label}
                           </span>
-                          {prod.compareAtPrice && (
-                            <span className="text-[11px] text-neutral-400 line-through">
-                              ₹{(prod.compareAtPrice / 100).toLocaleString("en-IN")}
-                            </span>
-                          )}
-                          <span className="text-[11px] text-neutral-500">• Stock: {prod.stock}</span>
-                        </div>
-                      </div>
+                          <span className="mt-1.5 block text-2xl font-semibold tracking-tight tabular-nums">{counts[f.id]}</span>
+                        </button>
+                      ))}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Link href={getStoreUrl(store.subdomain, `/products/${prod.slug}`)} target="_blank">
-                        <Button size="sm" variant="outline" className="text-xs h-7 rounded-md">
-                          View Page
-                        </Button>
-                      </Link>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs h-7 rounded-md gap-1"
-                        onClick={() => openEditProduct(prod)}
-                      >
-                        <Edit className="w-3 h-3" />
-                        <span>Edit</span>
-                      </Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <label className="flex-1 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                        <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+                        <input
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          placeholder="Search products or categories"
+                          className="w-full bg-transparent text-sm outline-none"
+                        />
+                      </label>
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete "${prod.title}"?`)) {
-                            storeService.deleteProduct(store.subdomain, prod.id);
-                            refreshStore();
-                          }
-                        }}
-                        className="p-1.5 text-neutral-400 hover:text-red-600 rounded-md cursor-pointer"
+                        type="button"
+                        onClick={startAdd}
+                        className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-black transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
+                        Add product
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                    <p className="-mt-2 text-xs text-neutral-500">
+                      {currentPlan.maxProducts >= 9999
+                        ? `${totalProducts} products · unlimited on your plan`
+                        : `${totalProducts} of ${currentPlan.maxProducts} product slots used`}
+                    </p>
+
+                    {list.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
+                        <span className="mx-auto w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-500 flex items-center justify-center">
+                          <Package className="w-5 h-5" />
+                        </span>
+                        <p className="mt-3 text-sm font-semibold">{store.products.length ? "No products match" : "No products yet"}</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {store.products.length ? "Try a different search or filter." : "Add your first product to start selling."}
+                        </p>
+                        {!store.products.length && (
+                          <button type="button" onClick={startAdd} className="mt-4 h-10 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold">
+                            Add product
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                        {list.map((prod, idx) => {
+                          const stock =
+                            prod.stock <= 0
+                              ? { text: "Sold out", cls: "bg-rose-50 text-rose-700" }
+                              : prod.stock <= LOW
+                                ? { text: `Only ${prod.stock} left`, cls: "bg-amber-50 text-amber-700" }
+                                : { text: `${prod.stock} in stock`, cls: "bg-emerald-50 text-emerald-700" };
+                          return (
+                            <div
+                              key={prod.id}
+                              className={`group flex flex-col rounded-2xl border border-neutral-200 bg-white overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.35)] animate-enter-slide-up stagger-${(idx % 6) + 1}`}
+                            >
+                              <div className="relative aspect-square bg-neutral-100 overflow-hidden">
+                                {prod.images[0] ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={prod.images[0]}
+                                    alt={prod.title}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <span className="absolute inset-0 flex items-center justify-center text-neutral-300">
+                                    <ImageIcon className="w-8 h-8" />
+                                  </span>
+                                )}
+                                <span className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stock.cls}`}>{stock.text}</span>
+                                {prod.status !== "published" && (
+                                  <span className="absolute top-2 right-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] font-semibold text-white capitalize">
+                                    {prod.status}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 flex flex-col p-3">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 truncate">{prod.category}</span>
+                                <h4 className="mt-0.5 text-sm font-semibold leading-snug line-clamp-2">{prod.title}</h4>
+                                <span className="mt-1 flex items-baseline gap-1.5">
+                                  <span className="text-sm font-semibold">₹{(prod.price / 100).toLocaleString("en-IN")}</span>
+                                  {prod.compareAtPrice && prod.compareAtPrice > prod.price && (
+                                    <span className="text-[11px] text-neutral-400 line-through">
+                                      ₹{(prod.compareAtPrice / 100).toLocaleString("en-IN")}
+                                    </span>
+                                  )}
+                                </span>
+                                <div className="mt-auto pt-3 flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditProduct(prod)}
+                                    className="flex-1 h-9 rounded-[10px] bg-neutral-950 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-black transition-colors"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                    Edit
+                                  </button>
+                                  <Link
+                                    href={getStoreUrl(store.subdomain, `/products/${prod.slug}`)}
+                                    target="_blank"
+                                    aria-label={`View ${prod.title} in your store`}
+                                    className="w-9 h-9 shrink-0 rounded-[10px] border border-neutral-200 flex items-center justify-center text-neutral-600 hover:border-neutral-900 hover:text-black transition-colors"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    aria-label={`Delete ${prod.title}`}
+                                    onClick={() => {
+                                      if (confirm(`Delete "${prod.title}"?`)) {
+                                        storeService.deleteProduct(store.subdomain, prod.id);
+                                        refreshStore();
+                                      }
+                                    }}
+                                    className="w-9 h-9 shrink-0 rounded-[10px] border border-neutral-200 flex items-center justify-center text-neutral-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )
         )}
@@ -3374,271 +3478,208 @@ function DashboardPageContent() {
             </div>
           ) : (
             <div className="mt-6 space-y-6 animate-enter-blur">
-              {/* Clean Sub-navigation & Action Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                {/* Segmented Control */}
-                <div className="inline-flex p-1 rounded-xl bg-neutral-100 border border-neutral-200/80">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryViewTab("categories")}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                      categoryViewTab === "categories"
-                        ? "bg-white text-neutral-900 shadow-xs"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
-                  >
-                    <FolderTree className="w-3.5 h-3.5" />
-                    <span>Categories</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-neutral-100 text-neutral-700 font-semibold">
-                      {(store.categories || []).filter((c) => !c.isParent).length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCategoryViewTab("collections")}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                      categoryViewTab === "collections"
-                        ? "bg-white text-neutral-900 shadow-xs"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Featured Collections</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-neutral-100 text-neutral-700 font-semibold">
-                      {(store.categories || []).filter((c) => c.isParent).length}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Primary Action Button */}
-                <div className="flex items-center gap-2">
-                  {categoryViewTab === "categories" ? (
-                    <Button
-                      size="sm"
-                      className="bg-[#111111] text-white hover:bg-black rounded-lg text-xs font-semibold px-4 cursor-pointer gap-1.5 shadow-xs"
-                      onClick={openAddCategory}
+              {/* Sub-navigation & add */}
+              <div className="flex items-center gap-2">
+                <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-neutral-100 p-1 sm:max-w-sm">
+                  {([
+                    { id: "categories", label: "Categories", count: (store.categories || []).filter((c) => !c.isParent).length },
+                    { id: "collections", label: "Collections", count: (store.categories || []).filter((c) => c.isParent).length },
+                  ] as const).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setCategoryViewTab(t.id)}
+                      style={{ minHeight: 0 }}
+                      className={`h-10 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-all ${
+                        categoryViewTab === t.id ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-900"
+                      }`}
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Category</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="bg-[#111111] text-white hover:bg-black rounded-lg text-xs font-semibold px-4 cursor-pointer gap-1.5 shadow-xs"
-                      onClick={openAddParentCollection}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Collection</span>
-                    </Button>
-                  )}
+                      {t.label}
+                      <span className="text-xs font-medium text-neutral-400 tabular-nums">{t.count}</span>
+                    </button>
+                  ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={categoryViewTab === "categories" ? openAddCategory : openAddParentCollection}
+                  aria-label={categoryViewTab === "categories" ? "Add category" : "Add collection"}
+                  className="h-12 w-12 sm:w-auto sm:px-5 shrink-0 rounded-2xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-black"
+                >
+                  <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{categoryViewTab === "categories" ? "Add category" : "Add collection"}</span>
+                </button>
               </div>
 
               {/* TAB CONTENT 1: CATEGORIES DIRECTORY */}
               {categoryViewTab === "categories" && (
-                <div className="p-5 rounded-2xl bg-white border border-neutral-200/90 shadow-xs space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-neutral-900">All Product Categories</h3>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        Categories used to sort and filter products across your store.
-                      </p>
-                    </div>
-
-                    {/* Filter / Search input */}
-                    <div className="relative w-full sm:w-64">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <div className="space-y-3">
+                  {(store.categories || []).filter((c) => !c.isParent).length > 0 && (
+                    <label className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                      <Search className="w-4 h-4 text-neutral-400 shrink-0" />
                       <input
-                        type="text"
-                        placeholder="Search categories..."
                         value={catSearchQuery}
                         onChange={(e) => setCatSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-neutral-200 bg-neutral-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                        placeholder="Search categories"
+                        className="w-full bg-transparent text-sm outline-none"
                       />
-                    </div>
-                  </div>
+                    </label>
+                  )}
 
-                  {/* Categories List */}
                   {(store.categories || []).filter((c) => !c.isParent).length === 0 ? (
-                    <div className="p-10 text-center border border-dashed border-neutral-200 rounded-xl bg-neutral-50/50 space-y-3">
-                      <FolderTree className="w-8 h-8 text-neutral-300 mx-auto" />
-                      <p className="text-xs font-semibold text-neutral-700">No categories added yet</p>
-                      <p className="text-[11px] text-neutral-500 max-w-sm mx-auto">
-                        Create categories so shoppers can easily browse your catalog.
-                      </p>
-                      <div className="flex items-center justify-center gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          className="bg-[#111111] text-white hover:bg-black rounded-lg text-xs cursor-pointer"
+                    <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center">
+                      <span className="mx-auto w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
+                        <FolderTree className="w-6 h-6 text-neutral-500" />
+                      </span>
+                      <p className="mt-4 text-base font-semibold">No categories yet</p>
+                      <p className="mt-1 text-sm text-neutral-500 max-w-xs mx-auto">Group your products so buyers can find them faster.</p>
+                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2">
+                        <button
+                          type="button"
                           onClick={openAddCategory}
+                          className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-black"
                         >
-                          <Plus className="w-3.5 h-3.5 mr-1" />
-                          <span>Add Category</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs rounded-lg cursor-pointer"
+                          <Plus className="w-4 h-4" />
+                          Add category
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
                             const defaults = buildDefaultCategoriesForStore(store.subdomain);
                             storeService.updateStore(store.subdomain, { categories: defaults });
                             refreshStore();
                           }}
+                          className="h-11 px-5 rounded-xl border border-neutral-200 text-sm font-semibold inline-flex items-center gap-2 hover:bg-neutral-50"
                         >
-                          <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                          <span>Load Defaults</span>
-                        </Button>
+                          <RefreshCw className="w-4 h-4" />
+                          Use suggested ones
+                        </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
-                      {(store.categories || [])
-                        .filter((cat) => !cat.isParent)
-                        .filter((cat) => {
-                          if (!catSearchQuery.trim()) return true;
-                          const q = catSearchQuery.toLowerCase();
-                          return (
-                            cat.name.toLowerCase().includes(q) ||
-                            cat.slug.toLowerCase().includes(q) ||
-                            (cat.description && cat.description.toLowerCase().includes(q))
-                          );
-                        })
-                        .map((cat, index) => {
+                    <div className="rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-100">
+                      {(() => {
+                        const visibleCats = (store.categories || [])
+                          .filter((cat) => !cat.isParent)
+                          .filter((cat) => {
+                            if (!catSearchQuery.trim()) return true;
+                            const q = catSearchQuery.toLowerCase();
+                            return (
+                              cat.name.toLowerCase().includes(q) ||
+                              cat.slug.toLowerCase().includes(q) ||
+                              (cat.description && cat.description.toLowerCase().includes(q))
+                            );
+                          });
+                        if (visibleCats.length === 0) {
+                          return <p className="px-4 py-8 text-center text-sm text-neutral-500">No categories match &ldquo;{catSearchQuery}&rdquo;</p>;
+                        }
+                        const total = (store.categories || []).filter((c) => !c.isParent).length;
+                        return visibleCats.map((cat, index) => {
                           const productCount = store.products.filter(
                             (p) =>
                               p.category.toLowerCase() === cat.name.toLowerCase() ||
                               p.category.toLowerCase() === cat.slug.toLowerCase()
                           ).length;
-
                           const parent = (store.categories || []).find((p) => p.id === cat.parentId);
+                          const live = cat.isActive ?? true;
+                          const menuOpen = catMenuId === cat.id;
 
                           return (
-                            <div
-                              key={cat.id}
-                              className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                {/* Order arrows */}
-                                <div className="flex flex-col items-center justify-center gap-0.5 text-neutral-400">
-                                  <button
-                                    onClick={() => handleMoveCategory(index, "up")}
-                                    disabled={index === 0}
-                                    className="p-1 hover:text-black disabled:opacity-20 disabled:hover:text-neutral-400 cursor-pointer"
-                                    title="Move Category Up"
-                                  >
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                  </button>
-                                  <span className="text-[10px] font-mono font-bold text-neutral-500">
-                                    #{index + 1}
-                                  </span>
-                                  <button
-                                    onClick={() => handleMoveCategory(index, "down")}
-                                    disabled={index === (store.categories?.filter((c) => !c.isParent).length || 1) - 1}
-                                    className="p-1 hover:text-black disabled:opacity-20 disabled:hover:text-neutral-400 cursor-pointer"
-                                    title="Move Category Down"
-                                  >
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-
-                                {/* Image preview / icon */}
-                                <div className="w-12 h-14 rounded-md overflow-hidden bg-neutral-100 border border-neutral-200 shrink-0 flex items-center justify-center">
+                            <div key={cat.id} className="flex items-center gap-3 p-3">
+                              <button
+                                type="button"
+                                onClick={() => openEditCategory(cat)}
+                                style={{ minHeight: 0 }}
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                              >
+                                <span className={`w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 flex items-center justify-center ${live ? "" : "opacity-50"}`}>
                                   {cat.imageUrl ? (
-                                    <img
-                                      src={cat.imageUrl}
-                                      alt={cat.name}
-                                      className="w-full h-full object-cover"
-                                    />
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={cat.imageUrl} alt="" className="w-full h-full object-cover" />
                                   ) : (
                                     <FolderTree className="w-5 h-5 text-neutral-400" />
                                   )}
-                                </div>
+                                </span>
+                                <span className="min-w-0">
+                                  <span className={`block truncate text-sm font-semibold ${live ? "" : "text-neutral-500"}`}>{cat.name}</span>
+                                  <span className="block truncate text-xs text-neutral-500">
+                                    {productCount} product{productCount === 1 ? "" : "s"}
+                                    {parent ? ` · ${parent.name}` : ""}
+                                    {live ? "" : " · Hidden"}
+                                  </span>
+                                </span>
+                              </button>
 
-                                {/* Category Details */}
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h4 className="text-xs font-bold text-neutral-900">{cat.name}</h4>
-                                    <code className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 font-mono">
-                                      /{cat.slug}
-                                    </code>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={live}
+                                aria-label={live ? `Hide ${cat.name} from store` : `Show ${cat.name} on store`}
+                                onClick={() => handleToggleCategoryActive(cat)}
+                                style={{ minHeight: 0, height: 24 }}
+                                className={`relative w-11 shrink-0 rounded-full transition-colors ${live ? "bg-emerald-500" : "bg-neutral-300"}`}
+                              >
+                                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${live ? "left-[22px]" : "left-0.5"}`} />
+                              </button>
 
-                                    {/* Parent collection badge */}
-                                    {parent ? (
-                                      <Badge className="bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-medium">
-                                        Collection: {parent.name}
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="neutral" className="text-neutral-400 text-[10px]">
-                                        Standalone
-                                      </Badge>
-                                    )}
-
-                                    <span
-                                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                                        cat.isActive ?? true
-                                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                          : "bg-neutral-100 text-neutral-500 border border-neutral-200"
-                                      }`}
-                                    >
-                                      {cat.isActive ?? true ? "Active" : "Hidden"}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1 text-xs text-neutral-500">
-                                    <span className="font-semibold text-neutral-800">
-                                      {productCount} product{productCount === 1 ? "" : "s"}
-                                    </span>
-                                    {cat.description && (
-                                      <>
-                                        <span>•</span>
-                                        <span className="truncate max-w-xs">{cat.description}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-2">
-                                <Link
-                                  href={getStoreUrl(store.subdomain, `/category/${cat.slug}`)}
-                                  target="_blank"
-                                >
-                                  <Button size="sm" variant="outline" className="text-xs h-7 rounded-md gap-1 cursor-pointer">
-                                    <span>View</span>
-                                    <ExternalLink className="w-3 h-3 text-neutral-400" />
-                                  </Button>
-                                </Link>
-
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7 rounded-md gap-1 cursor-pointer"
-                                  onClick={() => openEditCategory(cat)}
-                                >
-                                  <Edit className="w-3 h-3" />
-                                  <span>Edit</span>
-                                </Button>
-
+                              <div className="relative shrink-0">
                                 <button
-                                  onClick={() => handleToggleCategoryActive(cat)}
-                                  className="p-1.5 text-neutral-500 hover:text-black rounded-md hover:bg-neutral-100 text-[11px] cursor-pointer"
-                                  title={cat.isActive ?? true ? "Hide from Storefront" : "Show on Storefront"}
+                                  type="button"
+                                  onClick={() => setCatMenuId(menuOpen ? null : cat.id)}
+                                  aria-label={`More options for ${cat.name}`}
+                                  aria-expanded={menuOpen}
+                                  style={{ minHeight: 0 }}
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 ${menuOpen ? "bg-neutral-100 text-neutral-900" : ""}`}
                                 >
-                                  {cat.isActive ?? true ? "Hide" : "Show"}
+                                  <MoreVertical className="w-4 h-4" />
                                 </button>
-
-                                <button
-                                  onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                                  className="p-1.5 text-neutral-400 hover:text-red-600 rounded-md hover:bg-neutral-100 cursor-pointer"
-                                  title="Delete Category"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {menuOpen && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      aria-label="Close menu"
+                                      onClick={() => setCatMenuId(null)}
+                                      className="fixed inset-0 z-30 cursor-default"
+                                    />
+                                    <div className="absolute right-0 top-10 z-40 w-48 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-xl shadow-neutral-950/10 animate-enter-scale">
+                                      <button type="button" style={{ minHeight: 0 }} onClick={() => { setCatMenuId(null); openEditCategory(cat); }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent">
+                                        <Edit className="w-4 h-4" /> Edit
+                                      </button>
+                                      <Link
+                                        href={getStoreUrl(store.subdomain, `/category/${cat.slug}`)}
+                                        target="_blank"
+                                        onClick={() => setCatMenuId(null)}
+                                        style={{ minHeight: 0 }}
+                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent"
+                                      >
+                                        <ExternalLink className="w-4 h-4" /> View in store
+                                      </Link>
+                                      {!catSearchQuery.trim() && (
+                                        <>
+                                          <button type="button" style={{ minHeight: 0 }} disabled={index === 0} onClick={() => { setCatMenuId(null); handleMoveCategory(index, "up"); }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent">
+                                            <ChevronUp className="w-4 h-4" /> Move up
+                                          </button>
+                                          <button type="button" style={{ minHeight: 0 }} disabled={index === total - 1} onClick={() => { setCatMenuId(null); handleMoveCategory(index, "down"); }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent">
+                                            <ChevronDown className="w-4 h-4" /> Move down
+                                          </button>
+                                        </>
+                                      )}
+                                      <div className="my-1 h-px bg-neutral-100" />
+                                      <button
+                                        type="button"
+                                        style={{ minHeight: 0 }}
+                                        onClick={() => { setCatMenuId(null); handleDeleteCategory(cat.id, cat.name); }}
+                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="w-4 h-4" /> Delete
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
-                        })}
+                        });
+                      })()}
                     </div>
                   )}
                 </div>
@@ -3646,15 +3687,7 @@ function DashboardPageContent() {
 
               {/* TAB CONTENT 2: FEATURED COLLECTIONS */}
               {categoryViewTab === "collections" && (
-                <div className="p-5 rounded-2xl bg-white border border-neutral-200/90 shadow-xs space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-neutral-900">Featured Collections</h3>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        Promotional showcase cards displayed directly on your storefront homepage.
-                      </p>
-                    </div>
-                  </div>
+                <div className="space-y-4">
 
                   {/* Collections Grid */}
                   {(store.categories || []).filter((c) => c.isParent).length === 0 ? (
@@ -4007,65 +4040,143 @@ function DashboardPageContent() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 space-y-6 animate-enter-blur">
-            <div className="p-6 rounded-lg bg-white border border-neutral-200">
-              <h3 className="text-sm font-bold text-neutral-900 mb-4">Customer Orders ({totalOrders})</h3>
-
-              {store.orders.length === 0 ? (
-                <div className="p-10 text-center text-xs text-neutral-500">
-                  No orders recorded yet.
-                </div>
-              ) : (
-                <div className="divide-y divide-neutral-100">
-                  {store.orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50 rounded-md px-2 transition-colors"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-neutral-900">{order.number}</span>
-                          <span className="text-xs text-neutral-800">{order.customer.name}</span>
-                          <Badge variant="neutral" className="text-[10px] uppercase">
-                            {order.fulfilmentStatus}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-neutral-500">
-                          Items: {order.items.map((i) => `${i.title} (x${i.quantity})`).join(", ")}
-                        </p>
-                        <p className="text-xs text-neutral-900 font-semibold">
-                          Total: ₹{(order.total / 100).toLocaleString("en-IN")} via{" "}
-                          <span className="uppercase">{order.paymentMethod}</span>
-                          {order.paymentUtr && ` • UTR: ${order.paymentUtr}`}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 rounded-md"
-                          onClick={() => setSelectedOrder(order)}
+            <div className="space-y-5 animate-enter-blur">
+              {(() => {
+                const toShip = (o: OrderData) => ["placed", "confirmed", "packed"].includes(o.fulfilmentStatus);
+                const counts = {
+                  all: store.orders.length,
+                  toship: store.orders.filter(toShip).length,
+                  shipped: store.orders.filter((o) => o.fulfilmentStatus === "shipped").length,
+                  delivered: store.orders.filter((o) => o.fulfilmentStatus === "delivered").length,
+                };
+                const list = store.orders.filter(
+                  (o) =>
+                    orderFilter === "all" ||
+                    (orderFilter === "toship" && toShip(o)) ||
+                    (orderFilter === "shipped" && o.fulfilmentStatus === "shipped") ||
+                    (orderFilter === "delivered" && o.fulfilmentStatus === "delivered")
+                );
+                const STATUS: Record<string, string> = {
+                  placed: "bg-indigo-50 text-indigo-700",
+                  confirmed: "bg-sky-50 text-sky-700",
+                  packed: "bg-violet-50 text-violet-700",
+                  shipped: "bg-amber-50 text-amber-800",
+                  delivered: "bg-emerald-50 text-emerald-700",
+                  cancelled: "bg-rose-50 text-rose-700",
+                };
+                return (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      {[
+                        { id: "all" as const, label: "All orders", icon: ShoppingBag, tone: "bg-neutral-100 text-neutral-700" },
+                        { id: "toship" as const, label: "To ship", icon: Clock, tone: "bg-indigo-50 text-indigo-600" },
+                        { id: "shipped" as const, label: "Shipped", icon: Truck, tone: "bg-amber-50 text-amber-600" },
+                        { id: "delivered" as const, label: "Delivered", icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-600" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setOrderFilter(f.id)}
+                          className={`rounded-2xl border bg-white p-4 text-left transition-all ${
+                            orderFilter === f.id ? "border-neutral-900 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.5)]" : "border-neutral-200 hover:border-neutral-300"
+                          }`}
                         >
-                          Manage
-                        </Button>
-                        <a
-                          href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <Button size="sm" className="h-7 bg-[#111111] text-white hover:bg-black rounded-md text-xs gap-1">
-                            <MessageCircle className="w-3 h-3" />
-                            <span>WhatsApp</span>
-                          </Button>
-                        </a>
-                      </div>
+                          <span className="flex items-center justify-between">
+                            <span className="text-xs text-neutral-500">{f.label}</span>
+                            <span className={`w-7 h-7 rounded-[9px] flex items-center justify-center ${f.tone}`}>
+                              <f.icon className="w-3.5 h-3.5" />
+                            </span>
+                          </span>
+                          <span className="mt-1 block text-2xl font-semibold tracking-tight tabular-nums">{counts[f.id]}</span>
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {store.orders.length === 0 ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-14 text-center">
+                        <span className="mx-auto w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                          <ShoppingBag className="w-6 h-6" />
+                        </span>
+                        <p className="mt-4 text-base font-semibold">No orders yet</p>
+                        <p className="mt-1 text-sm text-neutral-500 max-w-sm mx-auto">
+                          Share your store link with buyers. New orders show up here the moment they&apos;re placed.
+                        </p>
+                        <div className="mt-5 flex flex-wrap justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={copyStoreLink}
+                            className="h-10 px-4 rounded-xl border border-neutral-200 text-sm font-semibold inline-flex items-center gap-2 hover:border-neutral-900"
+                          >
+                            {copiedLink ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                            {copiedLink ? "Link copied" : "Copy store link"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Shop our collection on ${store.name} 👉 ${storePublicUrl}`)}`, "_blank")}
+                            className="h-10 px-4 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-black"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            Share on WhatsApp
+                          </button>
+                        </div>
+                      </div>
+                    ) : list.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-12 text-center text-sm text-neutral-500">
+                        No orders in this view.
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-100 overflow-hidden">
+                        {list.map((order) => (
+                          <div key={order.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:bg-neutral-50/70 transition-colors">
+                            <span className="hidden sm:flex w-11 h-11 rounded-xl bg-neutral-100 text-neutral-700 items-center justify-center shrink-0">
+                              <ShoppingBag className="w-[18px] h-[18px]" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold">{order.number}</span>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${STATUS[order.fulfilmentStatus] || "bg-neutral-100 text-neutral-600"}`}>
+                                  {order.fulfilmentStatus}
+                                </span>
+                                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-neutral-600">
+                                  {order.paymentMethod}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 text-xs text-neutral-700 truncate">
+                                {order.customer.name} · {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                              </p>
+                              <p className="text-[11px] text-neutral-500 truncate">
+                                {order.items.map((i) => `${i.title} ×${i.quantity}`).join(", ")}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end gap-3">
+                              <span className="text-base font-semibold tabular-nums">₹{(order.total / 100).toLocaleString("en-IN")}</span>
+                              <div className="flex items-center gap-1.5">
+                                <a
+                                  href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  aria-label={`WhatsApp ${order.customer.name}`}
+                                  className="w-9 h-9 rounded-[10px] border border-neutral-200 flex items-center justify-center text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrder(order)}
+                                  className="h-9 px-4 rounded-[10px] bg-neutral-950 text-white text-xs font-semibold hover:bg-black"
+                                >
+                                  Manage
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          </div>
         )
       )}
 
@@ -4240,166 +4351,257 @@ function DashboardPageContent() {
               </form>
             </div>
           ) : (
-            <div className="mt-6 space-y-6 animate-enter-blur">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white border border-neutral-200/90 shadow-xs">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
-                    <Tag className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-sm font-bold text-neutral-900">Discounts & Promo Coupons</h3>
-                </div>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Create promotional discount codes. Buyers apply these at checkout for percentage or flat discounts.
-                </p>
-              </div>
-
-              <Button
-                size="sm"
-                className="gap-1.5 bg-[#111111] text-white hover:bg-black rounded-md text-xs shrink-0"
-                onClick={() => {
-                  setDCode("");
-                  setDType("percentage");
-                  setDValue("");
-                  setDMinOrder("");
+            <div className="space-y-5 animate-enter-blur">
+              {(() => {
+                const all = store.discounts || [];
+                const openNew = (preset?: { code: string; type: "percentage" | "flat"; value: string; min: string }) => {
+                  setDCode(preset?.code || "");
+                  setDType(preset?.type || "percentage");
+                  setDValue(preset?.value || "");
+                  setDMinOrder(preset?.min || "");
                   setDMaxDiscount("");
                   setDIsActive(true);
                   setIsDiscountModalOpen(true);
-                }}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create Discount Code</span>
-              </Button>
-            </div>
-
-            {/* Discounts List */}
-            <div className="bg-white rounded-2xl border border-neutral-200/90 shadow-xs overflow-hidden">
-              {!store.discounts || store.discounts.length === 0 ? (
-                <div className="p-12 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center mx-auto">
-                    <Tag className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-neutral-900">No discount codes created yet</h4>
-                    <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
-                      Attract first-time buyers with a welcome coupon like WELCOME10 or FLAT100.
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setDCode("WELCOME10");
-                      setDType("percentage");
-                      setDValue("10");
-                      setDMinOrder("500");
-                      setDIsActive(true);
-                      setIsDiscountModalOpen(true);
-                    }}
-                    className="bg-[#111111] text-white hover:bg-black text-xs rounded-md"
-                  >
-                    Create WELCOME10 Coupon
-                  </Button>
-                </div>
-              ) : (
-                <div className="divide-y divide-neutral-100">
-                  <div className="hidden sm:grid sm:grid-cols-12 px-6 py-3 bg-neutral-50/70 text-[11px] font-bold uppercase tracking-wider text-neutral-500">
-                    <div className="col-span-4">Coupon Code & Type</div>
-                    <div className="col-span-3">Discount Value</div>
-                    <div className="col-span-2">Minimum Cart</div>
-                    <div className="col-span-1">Times Used</div>
-                    <div className="col-span-2 text-right">Status & Action</div>
-                  </div>
-
-                  {store.discounts.map((discount) => (
-                    <div
-                      key={discount.id}
-                      className="p-4 sm:px-6 sm:py-4 flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-3 sm:gap-0 hover:bg-neutral-50/60 transition-colors"
-                    >
-                      <div className="col-span-4 flex items-center gap-3">
-                        <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-md bg-neutral-900 text-white tracking-wider">
-                          {discount.code}
-                        </span>
-                        <span className="text-[10px] uppercase font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded border border-neutral-200">
-                          {discount.type === "percentage" ? "% Off" : "Flat ₹"}
-                        </span>
-                      </div>
-
-                      <div className="col-span-3">
-                        <span className="text-xs font-bold text-neutral-900">
-                          {discount.type === "percentage" ? `${discount.value}% OFF` : `₹${(discount.value / 100).toLocaleString("en-IN")} FLAT OFF`}
-                        </span>
-                        {discount.maxDiscount && (
-                          <span className="text-[10px] text-neutral-500 block">
-                            (Max ₹{(discount.maxDiscount / 100).toLocaleString("en-IN")})
+                };
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: "Active", value: all.filter((d) => d.isActive).length, dot: "bg-emerald-500" },
+                        { label: "Paused", value: all.filter((d) => !d.isActive).length, dot: "bg-neutral-400" },
+                        { label: "Times used", value: all.reduce((n, d) => n + (d.timesUsed || 0), 0), dot: "bg-amber-500" },
+                      ].map((t) => (
+                        <div key={t.label} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                          <span className="flex items-center gap-2 text-xs text-neutral-500">
+                            <span className={`w-1.5 h-1.5 rounded-full ${t.dot}`} />
+                            {t.label}
                           </span>
-                        )}
-                      </div>
-
-                      <div className="col-span-2">
-                        <span className="text-xs text-neutral-600">
-                          {discount.minOrderValue && discount.minOrderValue > 0 ? `₹${(discount.minOrderValue / 100).toLocaleString("en-IN")}` : "No min"}
-                        </span>
-                      </div>
-
-                      <div className="col-span-1">
-                        <span className="text-xs font-semibold text-neutral-800">
-                          {discount.timesUsed || 0}
-                        </span>
-                      </div>
-
-                      <div className="col-span-2 flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleDiscount(discount.id)}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
-                            discount.isActive
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-neutral-100 text-neutral-500 border-neutral-200 hover:bg-neutral-200"
-                          }`}
-                        >
-                          {discount.isActive ? "Active" : "Paused"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDiscount(discount.id, discount.code)}
-                          title="Delete Coupon"
-                          className="p-1 text-neutral-400 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                          <span className="mt-1.5 block text-2xl font-semibold tracking-tight tabular-nums">{t.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {all.length === 0 ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center">
+                        <span className="mx-auto w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                          <Percent className="w-6 h-6" />
+                        </span>
+                        <p className="mt-4 text-base font-semibold">Create your first coupon</p>
+                        <p className="mt-1 text-sm text-neutral-500 max-w-sm mx-auto">Pick a ready-made one or make your own. Buyers enter the code at checkout.</p>
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2 max-w-lg mx-auto text-left">
+                          {[
+                            { code: "WELCOME10", line: "10% off orders over ₹500", type: "percentage" as const, value: "10", min: "500" },
+                            { code: "FLAT100", line: "₹100 off orders over ₹999", type: "flat" as const, value: "100", min: "999" },
+                          ].map((p) => (
+                            <button
+                              key={p.code}
+                              type="button"
+                              onClick={() => openNew(p)}
+                              className="group flex items-center gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/50 p-3 hover:bg-amber-50 transition-colors"
+                            >
+                              <span className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                                <Tag className="w-4 h-4" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block font-mono text-sm font-bold tracking-wider">{p.code}</span>
+                                <span className="block text-xs text-neutral-600">{p.line}</span>
+                              </span>
+                              <Plus className="w-4 h-4 text-amber-700 transition-transform group-hover:rotate-90" />
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => openNew()} className="mt-4 text-sm font-semibold underline underline-offset-4">
+                          Create a custom code
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => openNew()}
+                            className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-black"
+                          >
+                            <Plus className="w-4 h-4" />
+                            New coupon
+                          </button>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {all.map((discount) => (
+                            <div
+                              key={discount.id}
+                              className={`relative flex overflow-hidden rounded-2xl border bg-white transition-opacity ${discount.isActive ? "border-neutral-200" : "border-neutral-200 opacity-70"}`}
+                            >
+                              {/* value stub */}
+                              <div className={`w-28 shrink-0 flex flex-col items-center justify-center text-center px-2 py-4 ${discount.isActive ? "bg-amber-500 text-white" : "bg-neutral-200 text-neutral-600"}`}>
+                                <span className="text-2xl font-bold leading-none">
+                                  {discount.type === "percentage" ? `${discount.value}%` : `₹${(discount.value / 100).toLocaleString("en-IN")}`}
+                                </span>
+                                <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider opacity-90">off</span>
+                              </div>
+                              {/* perforation */}
+                              <span aria-hidden className="relative w-0 border-l-2 border-dashed border-neutral-200">
+                                <span className="absolute -top-2 -left-[9px] w-4 h-4 rounded-full bg-[#FAFAFA] border border-neutral-200" />
+                                <span className="absolute -bottom-2 -left-[9px] w-4 h-4 rounded-full bg-[#FAFAFA] border border-neutral-200" />
+                              </span>
+                              <div className="min-w-0 flex-1 p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-mono text-sm font-bold tracking-wider truncate">{discount.code}</span>
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={discount.isActive}
+                                    aria-label={discount.isActive ? "Pause coupon" : "Activate coupon"}
+                                    onClick={() => handleToggleDiscount(discount.id)}
+                                    style={{ minHeight: 0, height: 20 }}
+                                    className={`relative w-9 shrink-0 rounded-full transition-colors ${discount.isActive ? "bg-emerald-500" : "bg-neutral-300"}`}
+                                  >
+                                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${discount.isActive ? "left-[18px]" : "left-0.5"}`} />
+                                  </button>
+                                </div>
+                                <p className="mt-1 text-xs text-neutral-500">
+                                  {discount.minOrderValue && discount.minOrderValue > 0
+                                    ? `On orders over ₹${(discount.minOrderValue / 100).toLocaleString("en-IN")}`
+                                    : "No minimum order"}
+                                  {discount.maxDiscount ? ` · up to ₹${(discount.maxDiscount / 100).toLocaleString("en-IN")}` : ""}
+                                </p>
+                                <div className="mt-3 flex items-center justify-between">
+                                  <span className="text-[11px] text-neutral-500">
+                                    Used {discount.timesUsed || 0} time{(discount.timesUsed || 0) === 1 ? "" : "s"} · {discount.isActive ? "Active" : "Paused"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDiscount(discount.id, discount.code)}
+                                    aria-label={`Delete ${discount.code}`}
+                                    className="w-8 h-8 rounded-[10px] flex items-center justify-center text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          </div>
         )
       )}
 
         {/* TAB 4: CUSTOMERS */}
         {activeTab === "customers" && (
-          <div className="mt-6 space-y-6 animate-enter-blur">
-            <div className="p-6 rounded-lg bg-white border border-neutral-200">
-              <h3 className="text-sm font-bold text-neutral-900 mb-4">Customer Directory ({totalCustomers})</h3>
-              <div className="divide-y divide-neutral-100">
-                {store.customers.map((cust) => (
-                  <div key={cust.id} className="py-3 flex items-center justify-between gap-4">
-                    <div>
-                      <h4 className="text-xs font-bold text-neutral-900">{cust.name}</h4>
-                      <p className="text-xs text-neutral-500">{cust.phone} {cust.email && `• ${cust.email}`}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-neutral-900 block">
-                        ₹{(cust.totalSpent / 100).toLocaleString("en-IN")}
-                      </span>
-                      <span className="text-[10px] text-neutral-500">{cust.totalOrders} order(s)</span>
-                    </div>
+          <div className="space-y-5 animate-enter-blur">
+            {(() => {
+              const all = store.customers || [];
+              const q = customerSearch.trim().toLowerCase();
+              const list = all.filter((c) => !q || c.name.toLowerCase().includes(q) || c.phone.includes(q) || (c.email || "").toLowerCase().includes(q));
+              const tones = ["bg-indigo-100 text-indigo-700", "bg-emerald-100 text-emerald-700", "bg-amber-100 text-amber-800", "bg-rose-100 text-rose-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700"];
+              const initials = (n: string) => n.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Customers", value: all.length.toLocaleString("en-IN"), dot: "bg-indigo-500" },
+                      { label: "Repeat", value: all.filter((c) => c.totalOrders > 1).length.toLocaleString("en-IN"), dot: "bg-emerald-500" },
+                      { label: "Total spent", value: `₹${Math.round(all.reduce((n, c) => n + c.totalSpent, 0) / 100).toLocaleString("en-IN")}`, dot: "bg-amber-500" },
+                    ].map((t) => (
+                      <div key={t.label} className="rounded-2xl border border-neutral-200 bg-white p-4 min-w-0">
+                        <span className="flex items-center gap-2 text-xs text-neutral-500">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.dot}`} />
+                          <span className="truncate">{t.label}</span>
+                        </span>
+                        <span className="mt-1.5 block text-xl sm:text-2xl font-semibold tracking-tight tabular-nums truncate">{t.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  {all.length === 0 ? (
+                    <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-14 text-center">
+                      <span className="mx-auto w-14 h-14 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                        <Users className="w-6 h-6" />
+                      </span>
+                      <p className="mt-4 text-base font-semibold">No customers yet</p>
+                      <p className="mt-1 text-sm text-neutral-500 max-w-sm mx-auto">
+                        Everyone who orders from your store is added here, with their contact details and what they&apos;ve spent.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={copyStoreLink}
+                        className="mt-5 h-10 px-4 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-black"
+                      >
+                        {copiedLink ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedLink ? "Link copied" : "Copy store link"}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                        <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+                        <input
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          placeholder="Search by name, phone or email"
+                          className="w-full bg-transparent text-sm outline-none"
+                        />
+                      </label>
+                      {list.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-12 text-center text-sm text-neutral-500">
+                          No customers match &ldquo;{customerSearch}&rdquo;.
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-100 overflow-hidden">
+                          {list.map((cust, i) => (
+                            <div key={cust.id} className="p-4 sm:px-5 flex items-center gap-3 hover:bg-neutral-50/70 transition-colors">
+                              <span className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${tones[i % tones.length]}`}>
+                                {initials(cust.name)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold truncate">{cust.name}</span>
+                                  {cust.totalOrders > 1 && (
+                                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shrink-0">Repeat</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-neutral-500 truncate">
+                                  {cust.phone}
+                                  {cust.email ? ` · ${cust.email}` : ""}
+                                </p>
+                                <p className="text-[11px] text-neutral-400">
+                                  {cust.totalOrders} order{cust.totalOrders === 1 ? "" : "s"}
+                                  {cust.lastOrderAt ? ` · last on ${new Date(cust.lastOrderAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold tabular-nums shrink-0">₹{(cust.totalSpent / 100).toLocaleString("en-IN")}</span>
+                              <div className="hidden sm:flex items-center gap-1.5">
+                                <a
+                                  href={`https://wa.me/${cust.phone.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  aria-label={`WhatsApp ${cust.name}`}
+                                  className="w-9 h-9 rounded-[10px] border border-neutral-200 flex items-center justify-center text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                </a>
+                                <a
+                                  href={`tel:${cust.phone}`}
+                                  aria-label={`Call ${cust.name}`}
+                                  className="w-9 h-9 rounded-[10px] border border-neutral-200 flex items-center justify-center text-neutral-600 hover:border-neutral-900"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -4769,155 +4971,142 @@ function DashboardPageContent() {
               </form>
             </div>
           ) : (
-            <div className="mt-6 space-y-6 animate-enter-blur">
-            <div className="p-6 rounded-lg bg-white border border-neutral-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900">Homepage Banners</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Promotional banners displayed at the top of your store homepage.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-[#111111] text-white hover:bg-black rounded-md text-xs shrink-0"
-                  onClick={() => {
-                    setBImageUrl("");
-                    setBTargetType("");
-                    setBSelectedCategory("");
-                    setBSelectedProduct(null);
-                    setBSearchQuery("");
-                    setIsBannerModalOpen(true);
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  <span>Add Banner</span>
-                </Button>
-              </div>
-
-              {store.banners.length === 0 ? (
-                <div className="p-8 text-center border border-dashed border-neutral-200 rounded-lg bg-neutral-50/50">
-                  <ImageIcon className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                  <p className="text-xs font-semibold text-neutral-700">No banners yet</p>
-                  <p className="text-[11px] text-neutral-500 mt-1 max-w-sm mx-auto">
-                    Add promotional banners to highlight sales and top collections.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="mt-4 bg-[#111111] text-white hover:bg-black rounded-md text-xs"
-                    onClick={() => {
-                      setBImageUrl("");
-                      setBTargetType("");
-                      setBSelectedCategory("");
-                      setBSelectedProduct(null);
-                      setBSearchQuery("");
-                      setIsBannerModalOpen(true);
-                    }}
+            <div className="mt-6 space-y-4 animate-enter-blur">
+              {(() => {
+                const banners = store.banners;
+                const live = banners.filter((b) => b.isActive).length;
+                const openNewBanner = () => {
+                  setBImageUrl("");
+                  setBTargetType("");
+                  setBSelectedCategory("");
+                  setBSelectedProduct(null);
+                  setBSearchQuery("");
+                  setIsBannerModalOpen(true);
+                };
+                return banners.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={openNewBanner}
+                    className="group w-full aspect-[2/1] sm:aspect-[3.2/1] rounded-2xl border-2 border-dashed border-neutral-300 bg-white flex flex-col items-center justify-center gap-2 px-6 text-center hover:border-neutral-400 hover:bg-neutral-50 transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    <span>Add First Banner</span>
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {store.banners.map((b, idx) => (
-                    <div
-                      key={b.id}
-                      className={`p-4 rounded-lg border transition-all ${
-                        b.isActive ? "border-neutral-200 bg-white" : "border-neutral-200 bg-neutral-50/80 opacity-75"
-                      }`}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                        {/* Slide Position and Order controls */}
-                        <div className="md:col-span-1 flex items-center md:flex-col justify-between md:justify-center gap-1 text-center border-b md:border-b-0 md:border-r border-neutral-100 pb-2 md:pb-0 md:pr-2">
-                          <span className="text-xs font-mono font-bold text-neutral-400">#{idx + 1}</span>
-                          <div className="flex md:flex-col gap-1">
-                            <button
-                              type="button"
-                              disabled={idx === 0}
-                              onClick={() => handleMoveBanner(idx, "up")}
-                              className="p-1 rounded text-neutral-400 hover:text-black hover:bg-neutral-100 disabled:opacity-20"
-                              aria-label="Move banner up"
-                            >
-                              <ChevronUp className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={idx === store.banners.length - 1}
-                              onClick={() => handleMoveBanner(idx, "down")}
-                              className="p-1 rounded text-neutral-400 hover:text-black hover:bg-neutral-100 disabled:opacity-20"
-                              aria-label="Move banner down"
-                            >
-                              <ChevronDown className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Full card Image Preview */}
-                        <div className="md:col-span-4">
-                          <div className="relative aspect-[2.8/1] w-full rounded-md overflow-hidden border border-neutral-200 bg-neutral-100 shadow-2xs">
-                            <img src={b.imageUrl} alt={b.title || "Banner"} className="w-full h-full object-cover" />
-                          </div>
-                        </div>
-
-                        {/* Banner Details & Redirect destination */}
-                        <div className="md:col-span-4 flex flex-col justify-center text-left">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <Badge variant={b.isActive ? "success" : "neutral"} className="text-[10px]">
-                              {b.isActive ? "Active on Storefront" : "Disabled"}
-                            </Badge>
-                            {b.targetType && (
-                              <Badge variant="neutral" className="text-[10px] capitalize">
-                                {b.targetType} Link
-                              </Badge>
-                            )}
-                          </div>
-
-                          <h4 className="text-xs font-bold text-neutral-900 truncate">
-                            {b.title || "Storefront Banner"}
-                          </h4>
-
-                          <p className="text-[11px] text-neutral-500 mt-1 flex items-center gap-1">
-                            <span className="font-medium text-neutral-700">Redirects to:</span>
-                            <span className="font-mono text-neutral-800 bg-neutral-100 px-1.5 py-0.5 rounded text-[10px] truncate max-w-[200px]">
-                              {b.targetType === "category" ? `Category: ${b.targetValue}` : b.targetType === "product" ? `Product: ${b.targetValue}` : b.ctaLink}
-                            </span>
-                          </p>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="md:col-span-3 flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-100">
-                          {b.ctaLink && (
-                            <Link href={b.ctaLink} target="_blank">
-                              <Button size="sm" variant="outline" className="text-xs h-8 gap-1 rounded-md">
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Test Link</span>
-                              </Button>
-                            </Link>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="text-xs h-8 rounded-md"
-                            onClick={() => handleToggleBannerActive(b.id)}
-                          >
-                            {b.isActive ? "Pause" : "Activate"}
-                          </Button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteBanner(b.id)}
-                            className="p-2 text-neutral-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                            aria-label="Delete banner"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+                    <span className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center transition-transform group-hover:scale-105">
+                      <ImageIcon className="w-5 h-5 text-neutral-500" />
+                    </span>
+                    <span className="text-sm font-semibold">Add your first banner</span>
+                    <span className="text-xs text-neutral-500">It slides at the top of your store&apos;s homepage</span>
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-neutral-500">
+                        <span className="font-semibold text-neutral-900">{live} live</span> · {banners.length} total
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openNewBanner}
+                        className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-black"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add banner
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {banners.map((b, idx) => {
+                        const dest =
+                          b.targetType === "category" ? `Category · ${b.targetValue}`
+                          : b.targetType === "product" ? `Product · ${b.targetValue}`
+                          : b.ctaLink || "No link";
+                        return (
+                          <div
+                            key={b.id}
+                            className={`overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-opacity ${b.isActive ? "" : "opacity-75"}`}
+                          >
+                            <div className="relative aspect-[2.4/1] bg-neutral-100">
+                              <img
+                                src={b.imageUrl}
+                                alt={b.title || "Banner"}
+                                className={`w-full h-full object-cover transition-[filter] ${b.isActive ? "" : "grayscale"}`}
+                              />
+                              <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-2.5 py-1 text-[11px] font-semibold">
+                                <span className={`w-1.5 h-1.5 rounded-full ${b.isActive ? "bg-emerald-500" : "bg-neutral-400"}`} />
+                                {b.isActive ? "Live" : "Paused"}
+                              </span>
+                              <span className="absolute right-3 top-3 rounded-full bg-neutral-950/70 text-white px-2 py-1 text-[11px] font-semibold tabular-nums">
+                                {idx + 1}/{banners.length}
+                              </span>
+                            </div>
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold truncate">{b.title || "Storefront banner"}</p>
+                                  <p className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
+                                    <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{dest}</span>
+                                  </p>
+                                </div>
+                                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={b.isActive}
+                    aria-label="Show banner on store"
+                    onClick={() => handleToggleBannerActive(b.id)}
+                    style={{ minHeight: 0, height: 24 }}
+                    className={`relative w-11 shrink-0 rounded-full transition-colors ${b.isActive ? "bg-emerald-500" : "bg-neutral-300"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${b.isActive ? "left-[22px]" : "left-0.5"}`} />
+                  </button>
+                              </div>
+                              <div className="mt-4 flex items-center gap-1 border-t border-neutral-100 pt-3">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveBanner(idx, "up")}
+                                  style={{ minHeight: 0 }}
+                                  className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:hover:bg-transparent"
+                                  aria-label="Move banner earlier"
+                                >
+                                  <ChevronUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === banners.length - 1}
+                                  onClick={() => handleMoveBanner(idx, "down")}
+                                  style={{ minHeight: 0 }}
+                                  className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:hover:bg-transparent"
+                                  aria-label="Move banner later"
+                                >
+                                  <ChevronDown className="w-4 h-4" />
+                                </button>
+                                <span className="flex-1" />
+                                {b.ctaLink && (
+                                  <Link
+                                    href={b.ctaLink}
+                                    target="_blank"
+                                    style={{ minHeight: 0 }}
+                                    className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    Test link
+                                  </Link>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteBanner(b.id)}
+                                  style={{ minHeight: 0 }}
+                                  className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                                  aria-label="Delete banner"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
           </div>
         )
       )}
@@ -5371,69 +5560,100 @@ function DashboardPageContent() {
         )}
 
         {/* TAB 8: BILLING */}
-        {activeTab === "billing" && (
-          <div className="mt-6 space-y-6 animate-enter-blur">
-            <div className="p-6 rounded-lg bg-white border border-neutral-200">
-              <h3 className="text-sm font-bold text-neutral-900 mb-1">Subscription Plans</h3>
-              <p className="text-xs text-neutral-500 mb-6">
-                Active Tier: <span className="font-bold text-black">{currentPlan.name}</span>
-              </p>
-
+        {activeTab === "billing" && (() => {
+          const used = store.products?.length || 0;
+          const limit = currentPlan.maxProducts;
+          const unlimited = limit >= 999999;
+          const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
+          return (
+            <div className="mt-6 space-y-4 animate-enter-blur">
               {upgradeSuccess && (
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 mb-6 animate-in fade-in">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Subscription plan successfully upgraded to {currentPlan.name}! Product capacity and designer theme privileges are immediately active.</span>
+                <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>You&apos;re now on <b>{currentPlan.name}</b>. Your new limits are active.</span>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {Object.values(PLATFORM_PLANS).map((plan) => {
-                  const isCurrent = store.planId === plan.id;
+              <div className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <span className="block text-[11px] text-neutral-500">Your plan</span>
+                  <span className="block truncate text-sm font-semibold">{currentPlan.name}</span>
+                </div>
+                <div className="ml-auto w-32 sm:w-48 shrink-0">
+                  <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                    <span>Products</span>
+                    <span className="font-semibold text-neutral-900 tabular-nums">{unlimited ? `${used} · Unlimited` : `${used}/${limit}`}</span>
+                  </div>
+                  {!unlimited && (
+                    <div className="mt-1.5 h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+                      <div className={`h-full rounded-full ${pct >= 90 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  )}
+                </div>
+              </div>
 
+              <h3 className="pt-2 text-base font-semibold">Choose your plan</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                {Object.values(PLATFORM_PLANS).sort((a, b) => b.priceMonthly - a.priceMonthly).map((plan) => {
+                  const isCurrent = store.planId === plan.id;
+                  const dark = plan.id === "pro";
+                  const isFree = plan.priceMonthly === 0;
+                  const isUpgrade = plan.priceMonthly > currentPlan.priceMonthly;
                   return (
                     <div
                       key={plan.id}
-                      className={`p-6 rounded-lg border flex flex-col justify-between ${
-                        isCurrent
-                          ? "border-black bg-neutral-50 ring-1 ring-black"
-                          : "border-neutral-200 bg-white"
+                      className={`flex flex-col rounded-2xl border p-5 ${
+                        dark
+                          ? "bg-neutral-950 text-white border-neutral-950 shadow-xl shadow-neutral-950/15"
+                          : isFree
+                            ? "bg-neutral-50 border-neutral-200"
+                            : "bg-white border-amber-300 ring-1 ring-amber-300"
                       }`}
                     >
-                      <div>
-                        <h4 className="text-sm font-bold text-neutral-900">{plan.name}</h4>
-                        <div className="mt-2 flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-neutral-900">
-                            {plan.priceFormatted.split(" ")[0]}
-                          </span>
-                          <span className="text-xs text-neutral-500">/ month</span>
-                        </div>
-                        <p className="text-xs text-neutral-600 mt-2">{plan.description}</p>
-
-                        <ul className="mt-4 space-y-2 border-t border-neutral-100 pt-4 text-xs text-neutral-700">
-                          {plan.features.map((feat, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <CheckCircle className="w-3.5 h-3.5 text-neutral-800 shrink-0" />
-                              <span>{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="mt-6 pt-4 border-t border-neutral-100">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold">{plan.name}</span>
                         {isCurrent ? (
-                          <Button size="sm" variant="outline" className="w-full text-xs rounded-md" disabled>
-                            Current Plan
-                          </Button>
+                          <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">Current</span>
+                        ) : dark ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-0.5 text-[11px] font-semibold text-neutral-950">
+                            <Sparkles className="w-3 h-3" />
+                            Best value
+                          </span>
+                        ) : plan.highlight ? (
+                          <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">Popular</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 flex items-baseline gap-1">
+                        <span className="text-3xl font-semibold tracking-tight">{plan.priceFormatted.split(" ")[0]}</span>
+                        <span className={`text-sm ${dark ? "text-neutral-400" : "text-neutral-500"}`}>/month</span>
+                      </p>
+                      <p className={`mt-2 text-sm ${dark ? "text-neutral-400" : "text-neutral-500"}`}>{plan.description}</p>
+                      <ul className={`mt-4 space-y-2.5 border-t pt-4 text-sm ${dark ? "border-white/10 text-neutral-300" : "border-neutral-100 text-neutral-700"}`}>
+                        {plan.features.map((feat, i) => (
+                          <li key={i} className="flex gap-2.5">
+                            <span className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${dark ? "bg-white/10 text-white" : "bg-neutral-100 text-neutral-900"}`}>
+                              <Check className="w-2.5 h-2.5" />
+                            </span>
+                            <span>{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-auto pt-5">
+                        {isCurrent ? (
+                          <div className={`h-11 rounded-xl flex items-center justify-center text-sm font-semibold ${dark ? "bg-white/10 text-neutral-300" : "bg-neutral-100 text-neutral-500"}`}>
+                            Your current plan
+                          </div>
                         ) : (
-                          <Button
-                            size="sm"
-                            className="w-full text-xs bg-[#111111] text-white hover:bg-black rounded-md cursor-pointer"
-                            onClick={() => {
-                              handleUpgradePlan(plan.id as any);
-                            }}
+                          <button
+                            type="button"
+                            onClick={() => handleUpgradePlan(plan.id as any)}
+                            className={`w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
+                              dark ? "bg-white text-neutral-950 hover:bg-neutral-100" : isUpgrade ? "bg-neutral-950 text-white hover:bg-black" : "border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                            }`}
                           >
-                            Upgrade to {plan.name}
-                          </Button>
+                            {isUpgrade ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
+                            {isUpgrade && <ArrowRight className="w-4 h-4" />}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -5441,242 +5661,251 @@ function DashboardPageContent() {
                 })}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB 9: SETTINGS */}
         {activeTab === "settings" && (
-          <div className="mt-6 space-y-6 animate-enter-blur">
-            {/* Store Web Address Card */}
-            <div className="p-6 rounded-lg bg-white border border-neutral-200 space-y-4 text-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900">Store Web Address</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Your official public storefront URL on our platform.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(storePublicUrl);
-                      setCopiedLink(true);
-                      setTimeout(() => setCopiedLink(false), 2000);
-                    }}
-                    className="px-3 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 font-semibold text-neutral-800 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-neutral-600" />
-                    <span>Copy Address</span>
-                  </button>
-                  <Link href={liveStoreUrl} target="_blank">
-                    <Button size="sm" variant="outline" className="text-xs h-8 px-3 gap-1.5 rounded-lg cursor-pointer">
-                      <span>Open Store</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Globe className="w-4 h-4 text-neutral-600 shrink-0" />
-                  <span className="font-mono text-sm font-bold text-neutral-900">
-                    https://{storeWebDomain}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Live Subdomain
-                </span>
+          <div className="mt-6 space-y-4 animate-enter-blur">
+            {/* Store address */}
+            <div className="relative overflow-hidden rounded-2xl bg-neutral-950 text-white p-5 sm:p-6">
+              <div aria-hidden className="pointer-events-none absolute -right-14 -top-14 w-44 h-44 rounded-full bg-white/[0.04]" />
+              <span className="relative flex items-center gap-2 text-xs text-neutral-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Your store is live at
+              </span>
+              <p className="relative mt-2 text-xl sm:text-2xl font-semibold tracking-tight break-all">
+                <span className="text-neutral-500">https://</span>
+                {storeWebDomain}
+              </p>
+              <div className="relative mt-5 grid grid-cols-2 gap-2 sm:flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(storePublicUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="h-11 px-5 rounded-xl bg-white text-neutral-950 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-neutral-100"
+                >
+                  {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedLink ? "Copied" : "Copy link"}
+                </button>
+                <Link
+                  href={liveStoreUrl}
+                  target="_blank"
+                  className="h-11 px-5 rounded-xl border border-white/15 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-white/10"
+                >
+                  Open store
+                  <ArrowUpRight className="w-4 h-4" />
+                </Link>
               </div>
             </div>
 
-            {/* Brand Logo & Header Identity */}
-            <div className="p-6 rounded-lg bg-white border border-neutral-200 space-y-5 text-xs">
-              <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-neutral-900">Store Logo</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Upload a logo image for your store header.
-                  </p>
+                  <h3 className="text-base font-semibold">Store logo</h3>
+                  <p className="mt-0.5 text-sm text-neutral-500">Shown in your store&apos;s header. Without one, your store name is used.</p>
                 </div>
                 {logoSavedToast && (
-                  <Badge variant="success" className="text-xs">
-                    Logo Saved!
-                  </Badge>
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    <Check className="w-3.5 h-3.5" />
+                    Saved
+                  </span>
                 )}
               </div>
 
-              {/* Logo Live Preview & Placeholder Box */}
-              <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-lg bg-neutral-50 border border-neutral-200">
-                <div className="w-48 h-16 rounded-md bg-white border border-neutral-200 flex items-center justify-center p-2 shadow-xs shrink-0 overflow-hidden">
+              {/* how it looks in the header */}
+              <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200">
+                <div className="flex items-center gap-1.5 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+                  <span className="w-2 h-2 rounded-full bg-neutral-300" />
+                  <span className="w-2 h-2 rounded-full bg-neutral-300" />
+                  <span className="w-2 h-2 rounded-full bg-neutral-300" />
+                  <span className="ml-2 min-w-0 flex-1 truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-500">
+                    {storeWebDomain}
+                  </span>
+                </div>
+                <div className="flex h-16 items-center justify-between gap-3 bg-white px-4">
                   {logoUrlInput ? (
-                    <img
-                      src={logoUrlInput}
-                      alt="Brand Logo Preview"
-                      className="max-h-full max-w-full object-contain"
-                    />
+                    <img src={logoUrlInput} alt="Logo preview" className="max-h-10 max-w-[170px] object-contain" />
                   ) : (
-                    <div className="border border-dashed border-neutral-300 rounded p-2 text-center w-full h-full flex flex-col items-center justify-center">
-                      <Upload className="w-3.5 h-3.5 text-neutral-400 mb-0.5" />
-                      <span className="text-[10px] text-neutral-400 font-medium">Header Placeholder</span>
-                    </div>
+                    <span className="truncate text-lg font-bold tracking-tight">{store.name}</span>
                   )}
-                </div>
-
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-neutral-900">
-                      {logoUrlInput ? "Custom Logo Active" : "Default Store Name Active"}
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      ({store.name})
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-neutral-500">
-                    Recommended size: 240×60px PNG or SVG. If empty, your store name is displayed.
-                  </p>
+                  <span className="flex items-center gap-3 text-neutral-400">
+                    <Search className="w-4 h-4" />
+                    <ShoppingBag className="w-4 h-4" />
+                  </span>
                 </div>
               </div>
 
-              {/* Input & Direct File Upload */}
-              <div className="space-y-2">
-                <label className="font-bold text-neutral-800 block text-xs">
-                  Logo Image URL:
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="https://example.com/brand-logo.png (or upload below)"
-                    value={logoUrlInput}
-                    onChange={(e) => setLogoUrlInput(e.target.value)}
-                    className="text-xs font-mono"
-                  />
-                  <label className="shrink-0">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
-                              setLogoUrlInput(event.target.result as string);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-neutral-300 p-4 transition-colors hover:border-neutral-400 hover:bg-neutral-50">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setLogoUrlInput(event.target.result as string);
                         }
-                      }}
-                    />
-                    <Button type="button" variant="outline" size="md" className="cursor-pointer gap-1.5 text-xs">
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>Upload</span>
-                    </Button>
-                  </label>
-                </div>
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <span className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                  <UploadCloud className="w-5 h-5 text-neutral-600" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Upload a logo</span>
+                  <span className="block text-xs text-neutral-500">PNG or SVG, about 240×60px</span>
+                </span>
+              </label>
 
-                {/* Quick Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[11px] text-neutral-400 font-medium">Sample Logos:</span>
+              <div className="mt-4 flex items-center gap-3 text-xs text-neutral-400">
+                <span className="h-px flex-1 bg-neutral-200" />
+                or paste an image link
+                <span className="h-px flex-1 bg-neutral-200" />
+              </div>
+              <label className="mt-3 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                <Globe className="w-4 h-4 text-neutral-400 shrink-0" />
+                <input
+                  value={logoUrlInput.startsWith("data:") ? "" : logoUrlInput}
+                  onChange={(e) => setLogoUrlInput(e.target.value)}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </label>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-neutral-400">Try:</span>
+                <button
+                  type="button"
+                  onClick={() => setLogoUrlInput("https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?auto=format&fit=crop&w=400&q=80")}
+                  style={{ minHeight: 0 }} className="h-8 px-3 rounded-full border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  Minimal geometric
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogoUrlInput("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80")}
+                  style={{ minHeight: 0 }} className="h-8 px-3 rounded-full border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  Modern monogram
+                </button>
+                {logoUrlInput && (
                   <button
                     type="button"
-                    onClick={() => setLogoUrlInput("https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?auto=format&fit=crop&w=400&q=80")}
-                    className="text-[10px] px-2 py-0.5 rounded-md border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700"
+                    onClick={() => setLogoUrlInput("")}
+                    style={{ minHeight: 0 }}
+                    className="ml-auto h-8 px-3 rounded-full text-xs font-medium text-red-600 hover:bg-red-50"
                   >
-                    Minimal Geometric
+                    Remove logo
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setLogoUrlInput("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80")}
-                    className="text-[10px] px-2 py-0.5 rounded-md border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700"
-                  >
-                    Modern Monogram
-                  </button>
-                  {logoUrlInput && (
-                    <button
-                      type="button"
-                      onClick={() => setLogoUrlInput("")}
-                      className="text-[10px] px-2 py-0.5 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 ml-auto"
-                    >
-                      Clear Logo
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
 
-              <div className="flex justify-end pt-2">
-                <Button
+              <div className="mt-5 flex justify-end">
+                <button
                   type="button"
                   onClick={handleSaveBrandLogo}
-                  size="sm"
-                  className="bg-[#111111] text-white hover:bg-black rounded-md text-xs"
+                  className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold hover:bg-black"
                 >
-                  Save Brand Logo
-                </Button>
+                  Save logo
+                </button>
               </div>
             </div>
 
-            <form onSubmit={handleSaveSettings} className="p-6 rounded-lg bg-white border border-neutral-200 space-y-5 text-xs">
-              <h3 className="text-sm font-bold text-neutral-900">Payments & Announcement</h3>
+            {/* Payments & announcement */}
+            <form onSubmit={handleSaveSettings} className="rounded-2xl border border-neutral-200 bg-white">
+              <div className="p-5 sm:p-6">
+                <h3 className="text-base font-semibold">Payments</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">Money goes straight to you, with no middleman fees.</p>
 
-              <div>
-                <label className="font-bold text-neutral-800 block mb-1">
-                  Top Announcement Banner:
-                </label>
-                <Input
-                  placeholder="e.g. Free shipping on orders above ₹999 | Use code SAVE10"
-                  value={announcementInput}
-                  onChange={(e) => setAnnouncementInput(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-neutral-800 block mb-1">
-                  UPI ID for Payments:
-                </label>
-                <Input
-                  placeholder="e.g. yourstore@upi"
-                  value={upiIdInput}
-                  onChange={(e) => setUpiIdInput(e.target.value)}
-                  required
-                />
-                <p className="text-[11px] text-neutral-500 mt-1">
-                  Customer payments go directly to your UPI ID without platform middleman fees.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
-                <div>
-                  <label className="font-bold text-neutral-800 block mb-1">
-                    Cash on Delivery:
-                  </label>
-                  <select
-                    value={codEnabledInput ? "true" : "false"}
-                    onChange={(e) => setCodEnabledInput(e.target.value === "true")}
-                    className="w-full p-2.5 rounded-md border border-neutral-300 text-xs text-neutral-800 bg-white"
-                  >
-                    <option value="true">Enabled (Accept COD)</option>
-                    <option value="false">Disabled (Prepaid Only)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-neutral-800 block mb-1">
-                    COD Handling Fee (₹):
-                  </label>
-                  <Input
-                    placeholder="0"
-                    value={codFeeInput}
-                    onChange={(e) => setCodFeeInput(e.target.value)}
+                <label htmlFor="settings-upi" className="mt-5 block text-sm font-medium">UPI ID</label>
+                <label className="mt-1.5 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                  <IndianRupee className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <input
+                    id="settings-upi"
+                    value={upiIdInput}
+                    onChange={(e) => setUpiIdInput(e.target.value)}
+                    placeholder="yourstore@upi"
+                    required
+                    className="w-full bg-transparent text-sm outline-none"
                   />
+                </label>
+
+                <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-neutral-50 p-4">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="w-10 h-10 rounded-xl border border-neutral-200 bg-white flex items-center justify-center shrink-0">
+                      <Truck className="w-4 h-4 text-neutral-700" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">Cash on delivery</span>
+                      <span className="block text-xs text-neutral-500">
+                        {codEnabledInput ? "Buyers can pay when the order arrives" : "Prepaid orders only"}
+                      </span>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={codEnabledInput}
+                    aria-label="Cash on delivery"
+                    onClick={() => setCodEnabledInput(!codEnabledInput)}
+                    style={{ minHeight: 0, height: 24 }}
+                    className={`relative w-11 shrink-0 rounded-full transition-colors ${codEnabledInput ? "bg-emerald-500" : "bg-neutral-300"}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${codEnabledInput ? "left-[22px]" : "left-0.5"}`} />
+                  </button>
                 </div>
+
+                {codEnabledInput && (
+                  <div className="mt-4">
+                    <label htmlFor="settings-cod-fee" className="block text-sm font-medium">COD handling fee</label>
+                    <label className="mt-1.5 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors sm:max-w-[200px]">
+                      <span className="text-sm text-neutral-400">₹</span>
+                      <input
+                        id="settings-cod-fee"
+                        inputMode="numeric"
+                        value={codFeeInput}
+                        onChange={(e) => setCodFeeInput(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-transparent text-sm outline-none"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 border-t border-neutral-100 flex justify-end">
-                <Button type="submit" size="sm" className="bg-[#111111] text-white hover:bg-black rounded-md text-xs">
-                  Save Changes
-                </Button>
+              <div className="border-t border-neutral-100 p-5 sm:p-6">
+                <h3 className="text-base font-semibold">Announcement bar</h3>
+                <p className="mt-0.5 text-sm text-neutral-500">A short line shown at the very top of your store.</p>
+                <label className="mt-4 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-900 transition-colors">
+                  <Bell className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <input
+                    value={announcementInput}
+                    onChange={(e) => setAnnouncementInput(e.target.value)}
+                    placeholder="Free shipping over ₹999 · Use code SAVE10"
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </label>
+                {announcementInput && (
+                  <div className="mt-3 truncate rounded-xl bg-neutral-950 px-3 py-2 text-center text-xs font-medium text-white">
+                    {announcementInput}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end border-t border-neutral-100 p-5 sm:p-6">
+                <button type="submit" className="h-11 px-5 rounded-xl bg-neutral-950 text-white text-sm font-semibold hover:bg-black">
+                  Save changes
+                </button>
               </div>
             </form>
           </div>
@@ -6130,10 +6359,10 @@ function DashboardPageContent() {
         <footer className="mt-14 rounded-[20px] bg-neutral-950 text-white px-6 py-6 sm:px-8">
           <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
             <div className="flex flex-col items-center gap-1 md:items-start">
-              <ShopperWordmark className="h-8 w-auto text-white" />
+              <ShopperLogo className="text-[20px] text-white" />
               <span className="text-[12px] text-white/50">{siteConfig.description}</span>
             </div>
-            <nav aria-label="Shopper" className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-white/70 md:justify-end md:max-w-xl">
+            <nav aria-label={siteConfig.name} className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-white/70 md:justify-end md:max-w-xl">
               {[
                 { label: "Online store builder", href: "/#storefront" },
                 { label: "Store themes", href: "/#themes" },

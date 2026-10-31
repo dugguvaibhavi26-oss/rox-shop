@@ -20,6 +20,7 @@ import {
 } from "@/components/home/mockups";
 import { Reveal, CountUp, AnimatedTitle, type TitleEffect } from "@/components/home/reveal";
 import { PhotoCollage } from "@/components/home/photo-collage";
+import { ShopperLogo } from "@/components/brand/shopper-logo";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -197,11 +198,11 @@ function SiteHeader({ user, onSignOut }: { user: boolean; onSignOut: () => void 
       >
       <div className="px-3 sm:px-4 h-14 flex items-center justify-between gap-6">
         <div className="flex items-center gap-8">
-          <Link href="/" className="group/logo flex items-center gap-2">
-            <span className="w-8 h-8 rounded-[6px] bg-black text-white flex items-center justify-center font-black text-sm transition-transform duration-500 group-hover/logo:-rotate-12 group-hover/logo:scale-110">
-              {siteConfig.name.charAt(0)}
-            </span>
-            <span className="font-semibold text-lg tracking-tight">{siteConfig.name}</span>
+          <Link href="/" className="group/logo flex items-center">
+            <ShopperLogo
+              className="text-[20px]"
+              markClassName="origin-bottom transition-transform duration-500 group-hover/logo:-rotate-12 group-hover/logo:scale-110"
+            />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1 text-sm font-medium text-neutral-700">
@@ -1024,8 +1025,64 @@ function PlatformTabs() {
 /* ------------------------------------------------------------------ */
 
 function ThemesCarousel() {
-  const scroller = React.useRef<HTMLDivElement>(null);
-  const scrollBy = (dir: number) => scroller.current?.scrollBy({ left: dir * 340, behavior: "smooth" });
+  const themes = Object.values(PLATFORM_THEMES);
+  const n = themes.length;
+  // Three copies so there is always a card on both sides; the index stays in the middle copy
+  const slides = [...themes, ...themes, ...themes];
+  const [index, setIndex] = React.useState(n);
+  const [animate, setAnimate] = React.useState(true);
+  const [hovered, setHovered] = React.useState(false);
+  const [inView, setInView] = React.useState(false);
+  const viewport = React.useRef<HTMLDivElement>(null);
+  const touchX = React.useRef<number | null>(null);
+
+  const go = (next: number) => {
+    setAnimate(true);
+    setIndex(Math.max(0, Math.min(slides.length - 1, next)));
+  };
+
+  // Once a slide lands outside the middle copy, jump back to the matching card without animating
+  React.useEffect(() => {
+    if (index >= n && index < 2 * n) return;
+    const t = setTimeout(() => {
+      setAnimate(false);
+      setIndex(((((index - n) % n) + n) % n) + n);
+    }, 750);
+    return () => clearTimeout(t);
+  }, [index, n]);
+  React.useEffect(() => {
+    if (animate) return;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setAnimate(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [animate]);
+
+  React.useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: 0.25 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    if (hovered || !inView || n < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      setAnimate(true);
+      setIndex((i) => (i + 1 >= 3 * n ? i : i + 1));
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [hovered, inView, n]);
+
+  const ease = "ease-[cubic-bezier(0.22,1,0.36,1)]";
+  const current = ((index % n) + n) % n;
 
   return (
     <section id="themes" className="py-24 sm:py-32 overflow-hidden">
@@ -1040,16 +1097,16 @@ function ThemesCarousel() {
         <div className="flex gap-2 shrink-0">
           <button
             type="button"
-            aria-label="Previous themes"
-            onClick={() => scrollBy(-1)}
+            aria-label="Previous theme"
+            onClick={() => go(index - 1)}
             className="w-12 h-12 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-black hover:text-white hover:border-black hover:scale-105 active:scale-95 transition-all duration-300"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             type="button"
-            aria-label="Next themes"
-            onClick={() => scrollBy(1)}
+            aria-label="Next theme"
+            onClick={() => go(index + 1)}
             className="w-12 h-12 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-black hover:text-white hover:border-black hover:scale-105 active:scale-95 transition-all duration-300"
           >
             <ChevronRight className="w-5 h-5" />
@@ -1058,41 +1115,91 @@ function ThemesCarousel() {
       </div>
 
       <div
-        ref={scroller}
-        className="no-scrollbar mt-10 pb-10 flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-px-[11vw] sm:scroll-px-6 sm:scroll-px-4 sm:scroll-px-6 px-4 sm:px-6 lg:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]"
+        ref={viewport}
+        className="mt-10 pb-8 [--w:68vw] [--g:10px] sm:[--w:320px] sm:[--g:20px] lg:[--w:340px]"
+        onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(true)}
+        onPointerLeave={(e) => e.pointerType === "mouse" && setHovered(false)}
+        onTouchStart={(e) => {
+          touchX.current = e.touches[0].clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (touchX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          touchX.current = null;
+          if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+        }}
       >
-        {Object.values(PLATFORM_THEMES).map((theme, i) => (
-          <Link
-            key={theme.slug}
-            href="/s/lume"
-            className="scroll-carousel group snap-center sm:snap-start shrink-0 w-[78vw] sm:w-[320px] pt-2"
-          >
-            <Reveal delay={Math.min(i, 4) * 80} variant="right">
-            <div className="relative aspect-[4/5] rounded-[17px] overflow-hidden bg-neutral-100 transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_30px_60px_-25px_rgba(0,0,0,0.45)]">
-              {theme.previewImage && (
-                <img
-                  src={theme.previewImage}
-                  alt={`${theme.name} theme preview`}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0" />
-              <span className="absolute top-4 left-4 rounded-[7px] bg-white text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-1">
-                {theme.tier === "free" ? "Free" : theme.tier === "starter" ? "Growth" : "Pro"}
-              </span>
-              <div className="absolute bottom-0 inset-x-0 p-5 text-white flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-white/70">{theme.category}</div>
-                  <div className="text-xl font-bold tracking-tight truncate">{theme.name}</div>
+        <div
+          className={`flex w-max ${animate ? `transition-transform duration-700 ${ease}` : ""}`}
+          style={{
+            marginLeft: "50%",
+            gap: "var(--g)",
+            transform: `translateX(calc(var(--w) * -0.5 - ${index} * (var(--w) + var(--g))))`,
+          }}
+        >
+          {slides.map((theme, i) => {
+            const active = i === index;
+            const near = Math.abs(i - index) <= 1;
+            return (
+              <Link
+                key={i}
+                href="/s/lume"
+                tabIndex={active ? 0 : -1}
+                aria-hidden={!active}
+                onClick={(e) => {
+                  if (!active) {
+                    e.preventDefault();
+                    go(i);
+                  }
+                }}
+                className={`group block shrink-0 py-2 ${animate ? `transition-[transform,opacity] duration-700 ${ease}` : ""} ${
+                  active ? "scale-100 opacity-100" : near ? "scale-[0.9] opacity-60" : "scale-[0.9] opacity-30"
+                }`}
+                style={{ width: "var(--w)" }}
+              >
+                <div
+                  className={`relative aspect-[4/5] rounded-[17px] overflow-hidden bg-neutral-100 transition-shadow duration-700 ${
+                    active ? "shadow-[0_30px_60px_-30px_rgba(0,0,0,0.45)]" : ""
+                  }`}
+                >
+                  {theme.previewImage && (
+                    <img
+                      src={theme.previewImage}
+                      alt={`${theme.name} theme preview`}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0" />
+                  <span className="absolute top-4 left-4 rounded-[7px] bg-white text-black text-[10px] font-bold uppercase tracking-wider px-2.5 py-1">
+                    {theme.tier === "free" ? "Free" : theme.tier === "starter" ? "Growth" : "Pro"}
+                  </span>
+                  <div className="absolute bottom-0 inset-x-0 p-5 text-white flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[11px] uppercase tracking-[0.14em] text-white/70">{theme.category}</div>
+                      <div className="text-xl font-bold tracking-tight truncate">{theme.name}</div>
+                    </div>
+                    <span className="w-10 h-10 shrink-0 rounded-full bg-white text-black flex items-center justify-center transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110">
+                      <ArrowUpRight className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
-                <span className="w-10 h-10 shrink-0 rounded-full bg-white text-black flex items-center justify-center transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110">
-                  <ArrowUpRight className="w-4 h-4" />
-                </span>
-              </div>
-            </div>
-            </Reveal>
-          </Link>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-1.5">
+        {themes.map((theme, k) => (
+          <button
+            key={theme.slug}
+            type="button"
+            aria-label={`Show ${theme.name}`}
+            onClick={() => go(index - current + k)}
+            style={{ minHeight: 0 }}
+            className={`h-1.5 rounded-full transition-all duration-500 ${current === k ? "w-6 bg-black" : "w-1.5 bg-neutral-300 hover:bg-neutral-400"}`}
+          />
         ))}
       </div>
     </section>
@@ -1358,11 +1465,8 @@ function SiteFooter() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-10">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-10">
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2 text-white">
-              <span className="w-8 h-8 rounded-[6px] bg-white text-black flex items-center justify-center font-black text-sm">
-                {siteConfig.name.charAt(0)}
-              </span>
-              <span className="font-semibold text-lg tracking-tight">{siteConfig.name}</span>
+            <Link href="/" className="inline-flex items-center text-white">
+              <ShopperLogo className="text-[22px]" />
             </Link>
             <p className="mt-4 text-sm leading-relaxed max-w-xs">
               The store builder for social sellers. Launch, sell and get paid directly — with zero commission.

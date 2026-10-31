@@ -15,7 +15,7 @@ if (
 
 export const siteConfig = {
   // Brand & Domain placeholders (overridable via environment variables)
-  name: process.env.NEXT_PUBLIC_APP_NAME || "Shopper",
+  name: process.env.NEXT_PUBLIC_APP_NAME || "shoppersite",
   domain: process.env.NEXT_PUBLIC_APP_DOMAIN || "shopper.in",
   url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   description: "The modern store builder for Indian social sellers.",

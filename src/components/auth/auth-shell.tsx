@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { siteConfig } from "@/lib/config/site";
 import { cn } from "@/lib/utils";
+import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 /**
@@ -23,11 +24,11 @@ export function AuthShell({
     <div className="home-sans min-h-screen bg-white text-neutral-950 font-[Inter,sans-serif] grid md:grid-cols-2">
       <div className="flex flex-col md:min-h-screen">
         <header className="h-16 sm:h-20 px-5 sm:px-10 flex items-center justify-between gap-4">
-          <Link href="/" className="group/logo flex items-center gap-2">
-            <span className="w-8 h-8 rounded-[6px] bg-black text-white flex items-center justify-center font-black text-sm transition-transform duration-500 group-hover/logo:-rotate-12 group-hover/logo:scale-110">
-              {siteConfig.name.charAt(0)}
-            </span>
-            <span className="font-semibold text-lg tracking-tight">{siteConfig.name}</span>
+          <Link href="/" className="group/logo flex items-center">
+            <ShopperLogo
+              className="text-[20px]"
+              markClassName="origin-bottom transition-transform duration-500 group-hover/logo:-rotate-12 group-hover/logo:scale-110"
+            />
           </Link>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-neutral-500 hidden sm:inline">{topLink.text}</span>

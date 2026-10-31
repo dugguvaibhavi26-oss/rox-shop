@@ -14,7 +14,7 @@ describe("Configuration & Security Settings", () => {
   });
 
   it("loads placeholder defaults for brand name and domain", () => {
-    expect(siteConfig.name).toBe("Shopper");
+    expect(siteConfig.name).toBe("shoppersite");
     expect(siteConfig.domain).toBe("shopper.in");
     expect(siteConfig.currency).toBe("INR");
     expect(siteConfig.maxStorefrontJsKb).toBe(150);

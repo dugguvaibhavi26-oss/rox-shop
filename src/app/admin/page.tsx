@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { PlatformBannersManager } from "@/components/admin/platform-banners-manager";
 import { PlatformTemplatesManager } from "@/components/admin/platform-templates-manager";
@@ -226,7 +227,7 @@ function AdminDashboardContent() {
   const BROADCAST_TEMPLATES = [
     {
       label: "🎉 New Themes",
-      subject: "[Shopper.site] 6 New Designer Themes & Font Controls Released!",
+      subject: "[shoppersite] 6 New Designer Themes & Font Controls Released!",
       message:
         "Hello Store Owners,\n\nWe have just unlocked 6 brand-new boutique store themes (Brutalist, Editorial, Minimalist, Pastel Luxe) and Google Typography controls in your Seller Dashboard. Upgrade your storefront visual aesthetic today!",
       ctaText: "Customize Storefront",
@@ -234,7 +235,7 @@ function AdminDashboardContent() {
     },
     {
       label: "⚠️ Maintenance",
-      subject: "🛠️ [Advisory] Scheduled Infrastructure Upgrade on Shopper Cloud",
+      subject: "🛠️ [Advisory] Scheduled Infrastructure Upgrade on shoppersite Cloud",
       message:
         "Dear Merchant,\n\nWe will be conducting a 15-minute scheduled cloud synchronization upgrade at 2:00 AM IST tonight. Your storefronts and checkout forms will remain completely accessible without downtime.",
       ctaText: "Check Cloud Status",
@@ -242,7 +243,7 @@ function AdminDashboardContent() {
     },
     {
       label: "⚡ 50% Pro Discount",
-      subject: "🚀 Special Offer: Get 50% Off Shopper Pro with Unlimited Products & Gmail Drops",
+      subject: "🚀 Special Offer: Get 50% Off shoppersite Pro with Unlimited Products & Gmail Drops",
       message:
         "Dear Merchant,\n\nGrow your store with unlimited catalog listings, custom designer fonts, buyer testimonials, and automated Gmail new-collection notifications. Use promo code PROGROWTH50 today!",
       ctaText: "Upgrade Subscription",
@@ -590,7 +591,7 @@ function AdminDashboardContent() {
               href="/"
               className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors"
             >
-              ← Back to Shopper.site
+              ← Back to shoppersite
             </Link>
           </div>
         </div>
@@ -1344,14 +1345,9 @@ function AdminDashboardContent() {
       <header className="border-b border-neutral-200 bg-white/95 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[64px] py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-neutral-900 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0 ring-1 ring-black/10">
-              S
-            </div>
             <div className="shrink-0">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-neutral-900 leading-none">
-                  Shopper
-                </span>
+                <ShopperLogo className="text-[18px] text-neutral-900" />
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-neutral-900 text-white leading-tight">
                   Lead Admin
                 </span>
@@ -2276,7 +2272,7 @@ function AdminDashboardContent() {
                               <a
                                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
                                   s.ownerEmail || s.contactEmail || ""
-                                )}&su=${encodeURIComponent("Shopper Platform Notice: " + s.name)}`}
+                                )}&su=${encodeURIComponent("shoppersite Platform Notice: " + s.name)}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 title={`Email merchant via Gmail (${s.ownerEmail || s.contactEmail})`}

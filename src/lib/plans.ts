@@ -82,7 +82,7 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
       "Every designer template, including Lookbook, Split Magazine & Sidebar",
       "Custom domain support (e.g. www.yourshop.in / .com)",
       "Unlimited promotional banners & sliders",
-      "Remove 'Powered by Shopper' watermark",
+      "Remove 'Powered by shoppersite' watermark",
       "Advanced customer insights & analytics",
       "Priority 24/7 dedicated WhatsApp support",
     ],
