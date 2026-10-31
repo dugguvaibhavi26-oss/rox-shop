@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { PlatformBannersManager } from "@/components/admin/platform-banners-manager";
+import { PlatformTemplatesManager } from "@/components/admin/platform-templates-manager";
 import {
   ShieldAlert,
   Users,
@@ -102,7 +103,7 @@ function AdminDashboardContent() {
 
   // Active Tab: overview | users | subscriptions | broadcasts | banners | health
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "subscriptions" | "broadcasts" | "banners" | "health"
+    "overview" | "users" | "subscriptions" | "broadcasts" | "banners" | "templates" | "health"
   >("overview");
 
   // Detailed Seller Profile View State (when inspecting a single store's full history)
@@ -1419,6 +1420,17 @@ function AdminDashboardContent() {
               <span>Banners</span>
             </button>
             <button
+              onClick={() => setActiveTab("templates")}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
+                activeTab === "templates"
+                  ? "bg-white text-neutral-900 shadow-xs font-bold"
+                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Templates</span>
+            </button>
+            <button
               onClick={() => setActiveTab("health")}
               className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
                 activeTab === "health"
@@ -1499,6 +1511,14 @@ function AdminDashboardContent() {
             }`}
           >
             Banners
+          </button>
+          <button
+            onClick={() => setActiveTab("templates")}
+            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
+              activeTab === "templates" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
+            }`}
+          >
+            Templates
           </button>
           <button
             onClick={() => setActiveTab("health")}
@@ -2623,6 +2643,8 @@ function AdminDashboardContent() {
 
         {/* 5. CLOUD SYNC & INFRASTRUCTURE (LIGHT THEME) */}
         {activeTab === "banners" && <PlatformBannersManager />}
+
+        {activeTab === "templates" && <PlatformTemplatesManager />}
 
         {activeTab === "health" && (
           <div className="space-y-6">

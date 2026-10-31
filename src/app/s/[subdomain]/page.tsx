@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { storeService, StoreData, ProductData, OrderItemData, DEFAULT_HOMEPAGE_SECTION_IDS } from "@/lib/store-service";
-import { getTheme, generateThemeCssVariables, PLATFORM_THEMES } from "@/lib/themes";
+import { getTheme, generateThemeCssVariables, getAllThemes } from "@/lib/themes";
 import { getFontFamily } from "@/lib/fonts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import {
 import { ProductCard } from "@/components/storefront/product-card";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { StoreFooter } from "@/components/storefront/store-footer";
+import { TemplateHome, TemplateHeader, TemplateFooter, TEMPLATE_HOME_LAYOUTS } from "@/components/storefront/template-layouts";
 
 interface PageProps {
   params: Promise<{ subdomain: string }>;
@@ -136,7 +137,7 @@ export default function StorefrontPage({ params }: PageProps) {
 
   const theme = useMemo(() => {
     return getTheme(previewThemeSlug || store?.activeThemeSlug);
-  }, [previewThemeSlug, store?.activeThemeSlug]);
+  }, [previewThemeSlug, store]);
 
   const brandTheme = useMemo(() => {
     if (previewThemeSlug) {
@@ -495,6 +496,8 @@ export default function StorefrontPage({ params }: PageProps) {
   );
 
   const layoutType = theme.layoutType || "editorial";
+  // the newer layouts draw their own header, home, product cards and footer
+  const isTemplateLayout = TEMPLATE_HOME_LAYOUTS.includes(layoutType);
 
   return (
     <div
@@ -533,7 +536,7 @@ export default function StorefrontPage({ params }: PageProps) {
                 }}
                 className="bg-neutral-900 text-white text-[11px] px-2 py-1 rounded-md border border-neutral-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
               >
-                {Object.values(PLATFORM_THEMES).map((t) => (
+                {getAllThemes().map((t) => (
                   <option key={t.slug} value={t.slug}>
                     {t.name} ({t.layoutType || "editorial"})
                   </option>
@@ -585,15 +588,28 @@ export default function StorefrontPage({ params }: PageProps) {
       )}
 
       {/* 1. Header with Brand Logo Upload / Title */}
-      <StoreHeader
-        store={store}
-        cartCount={cart.reduce((acc, it) => acc + it.quantity, 0)}
-        onOpenCart={() => setIsCartOpen(true)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        activeCategorySlug={selectedCategory !== "All" ? selectedCategory.toLowerCase() : undefined}
-        brandTheme={brandTheme}
-      />
+      {isTemplateLayout ? (
+        <TemplateHeader
+          layout={layoutType}
+          store={store}
+          categories={storyCategories}
+          subdomain={subdomain}
+          cartCount={cartItemCount}
+          onOpenCart={() => setIsCartOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      ) : (
+        <StoreHeader
+          store={store}
+          cartCount={cart.reduce((acc, it) => acc + it.quantity, 0)}
+          onOpenCart={() => setIsCartOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeCategorySlug={selectedCategory !== "All" ? selectedCategory.toLowerCase() : undefined}
+          brandTheme={brandTheme}
+        />
+      )}
 
       {isCheckoutOpen ? (
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 animate-enter-slide-up">
@@ -1160,7 +1176,20 @@ export default function StorefrontPage({ params }: PageProps) {
         </main>
       ) : (
         <div className="w-full flex flex-col">
-          {sectionOrder.map((sectionId) => {
+          {isTemplateLayout ? (
+            <TemplateHome
+              layout={layoutType}
+              store={store}
+              theme={theme}
+              products={store.products.filter(
+                (p) => p.status === "published" && (!searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+              )}
+              categories={storyCategories}
+              fallbackImage={activeBanners[0]?.imageUrl}
+              subdomain={subdomain}
+              onAddToCart={handleAddToCart}
+            />
+          ) : sectionOrder.map((sectionId) => {
             if (sectionId === "hero") {
               return (
                 <React.Fragment key="hero">
@@ -1864,7 +1893,11 @@ export default function StorefrontPage({ params }: PageProps) {
       )}
 
       {/* Rich Multi-Column Store Footer */}
-      <StoreFooter store={store} brandTheme={brandTheme} />
+      {isTemplateLayout ? (
+        <TemplateFooter layout={layoutType} store={store} categories={storyCategories} subdomain={subdomain} />
+      ) : (
+        <StoreFooter store={store} brandTheme={brandTheme} />
+      )}
     </div>
   );
 }

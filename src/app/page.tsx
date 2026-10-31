@@ -141,19 +141,25 @@ export default function HomePage() {
 
       <main className="flex-1">
         <Hero onClaim={claimStore} />
-        <StorefrontStage />
-        <StatsAndMarquee />
-        <FeatureCards />
-        <PlatformTabs />
-        <ThemesCarousel />
-        <HowItWorks />
-        <Statement />
-        <Pricing />
-        <Faq />
-        <FinalCta onClaim={claimStore} />
-      </main>
 
-      <SiteFooter />
+        {/* The rest of the page is one sheet that slides up over the pinned hero */}
+        <div className="relative z-10 bg-white rounded-t-[28px] sm:rounded-t-[44px] shadow-[0_-28px_60px_-18px_rgba(0,0,0,0.28),0_-2px_10px_-4px_rgba(0,0,0,0.08)]">
+          <span aria-hidden className="block mx-auto pt-3 w-12">
+            <span className="block h-1.5 rounded-full bg-neutral-200" />
+          </span>
+          <StorefrontStage />
+          <StatsAndMarquee />
+          <FeatureCards />
+          <PlatformTabs />
+          <ThemesCarousel />
+          <HowItWorks />
+          <Statement />
+          <Pricing />
+          <Faq />
+          <FinalCta onClaim={claimStore} />
+          <SiteFooter />
+        </div>
+      </main>
     </div>
   );
 }
@@ -402,7 +408,7 @@ function HeroStage({ children }: { children: React.ReactNode }) {
     <div
       onPointerMove={onMove}
       onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-      className="scroll-hero-exit relative flex-1 flex items-center justify-center px-4 sm:px-8 py-6 [perspective:1400px]"
+      className="relative flex-1 flex items-center justify-center px-4 sm:px-8 py-6 [perspective:1400px]"
     >
       <div
         className="w-full flex justify-center [transform-style:preserve-3d] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
@@ -414,14 +420,54 @@ function HeroStage({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Keeps the hero pinned while the page sheet slides over it: as the sheet covers the hero,
+ * the hero panel eases back (slightly smaller and darker) instead of moving away.
+ */
+function useHeroSink() {
+  const sectionRef = React.useRef<HTMLElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const shadeRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const section = sectionRef.current;
+    const panel = panelRef.current;
+    const shade = shadeRef.current;
+    if (!section || !panel || !shade) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => {
+      // 0 at the top of the page, 1 once the sheet has fully covered the hero
+      const p = Math.min(1, Math.max(0, window.scrollY / Math.max(1, section.offsetHeight)));
+      panel.style.transform = reduce.matches ? "" : `scale(${1 - p * 0.07})`;
+      shade.style.opacity = String(p * 0.45);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return { sectionRef, panelRef, shadeRef };
+}
+
 function Hero({ onClaim }: { onClaim: (v: string) => void }) {
+  const { sectionRef, panelRef, shadeRef } = useHeroSink();
   return (
     // First screen (below the 68px header): an inset, rounded panel with the drifting
-    // photo collage and a floating 3D text card in the middle.
-    <section className="relative px-8 pt-2 pb-8 h-[calc(100svh-68px)] min-h-[600px]">
-      <div className="relative h-full rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 flex flex-col">
+    // photo collage and a floating 3D text card in the middle. It stays pinned in place
+    // while the rest of the page slides up over it.
+    <section ref={sectionRef} className="sticky top-[68px] z-0 px-4 sm:px-6 lg:px-8 pt-2 pb-4 sm:pb-6 h-[calc(100svh-68px)] min-h-[600px]">
+      <div
+        ref={panelRef}
+        className="relative h-full rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 flex flex-col origin-top will-change-transform"
+      >
+        {/* darkens as the page sheet covers the hero */}
+        <div ref={shadeRef} aria-hidden className="pointer-events-none absolute inset-0 z-20 bg-black" style={{ opacity: 0 }} />
         {/* Drifting full-colour photo collage — wider columns on phones, more on larger screens */}
-        <div aria-hidden className="scroll-collage absolute inset-0">
+        <div aria-hidden className="absolute inset-0">
           <PhotoCollage columns={3} className="sm:hidden absolute -inset-x-[25%] -top-[30%] h-[160%] opacity-90" />
           <PhotoCollage columns={6} className="hidden sm:flex absolute -inset-x-[12%] -top-[40%] h-[180%] opacity-90" />
         </div>

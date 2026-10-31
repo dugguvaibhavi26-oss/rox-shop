@@ -1,0 +1,40 @@
+{
+  "format": "shopper-template@1",
+  "slug": "bazaar-market",
+  "name": "Bazaar Market",
+  "tagline": "A busy, deal-led marketplace for big catalogues",
+  "description": "Built for stores with lots of products: a delivery and payment perks strip, a bento of hero and deal tiles, sticky category filters with sorting, and a dense five-column grid. Indigo and saffron keep it bright and easy to scan.",
+  "tier": "starter",
+  "category": "Multi-category Store",
+  "layout": "market-deals",
+  "tokens": {
+    "background": "#FFFFFF",
+    "foreground": "#111827",
+    "card": "#FFFFFF",
+    "cardForeground": "#111827",
+    "primary": "#3730A3",
+    "primaryForeground": "#FFFFFF",
+    "accent": "#F59E0B",
+    "accentForeground": "#1F1300",
+    "muted": "#F3F4F6",
+    "mutedForeground": "#6B7280",
+    "border": "#E5E7EB",
+    "radius": "12px",
+    "fontFamily": "Manrope"
+  },
+  "previewColors": [
+    "#FFFFFF",
+    "#3730A3",
+    "#F59E0B",
+    "#111827"
+  ],
+  "images": {
+    "preview": "https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=900&q=80",
+    "hero": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1800&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80"
+    ]
+  }
+}

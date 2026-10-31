@@ -1,5 +1,6 @@
 import { PLATFORM_PLANS, canAddProduct, isThemeAllowed } from "./plans";
-import { getTheme, PLATFORM_THEMES } from "./themes";
+import { getTheme, PLATFORM_THEMES, registerUploadedThemes, type ThemeDefinition } from "./themes";
+import { manifestToTheme, type ParsedTemplate } from "./templates/package";
 import { db, storage } from "./firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
@@ -219,6 +220,17 @@ export interface PlatformBroadcast {
   ctaLink?: string;
   sentAt: string;
   recipientCount: number;
+}
+
+// Storefront template uploaded as a ZIP from the admin dashboard
+export interface PlatformTemplate {
+  id: string; // same as the theme slug
+  status: "draft" | "published";
+  theme: ThemeDefinition;
+  fileName: string;
+  storagePaths?: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Image banner the platform admin shows on every seller's dashboard overview
@@ -1190,6 +1202,8 @@ class StoreService {
       this.persist();
       this.initialized = true;
       this.connectFirebase();
+      this.loadPlatformTemplates();
+      this.connectPlatformTemplates();
     }
   }
 
@@ -2246,19 +2260,7 @@ class StoreService {
     let imageUrl: string;
     let storagePath: string | undefined;
 
-    try {
-      // prefer Firebase Storage; give up after 20s so the admin isn't left waiting
-      const path = `platform_banners/${id}-${file.name.replace(/[^\w.-]/g, "_")}`;
-      const uploaded = await Promise.race([
-        uploadBytes(storageRef(storage, path), file, { contentType: file.type }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("upload timed out")), 20000)),
-      ]);
-      imageUrl = await getDownloadURL(uploaded.ref);
-      storagePath = path;
-    } catch (err) {
-      console.warn("[Firebase Storage] Banner upload failed, storing a compressed copy instead:", err);
-      imageUrl = await compressImageToDataUrl(file, 1600, 0.82);
-    }
+    ({ url: imageUrl, storagePath } = await hostPlatformImage(file, `platform_banners/${id}`));
 
     const banner: PlatformBanner = {
       id,
@@ -2274,6 +2276,143 @@ class StoreService {
     );
     this.notify();
     return banner;
+  }
+
+  // --- Platform templates (ZIP uploads from the admin, offered to every seller once published) ---
+  private platformTemplates: PlatformTemplate[] = [];
+  private platformTemplatesLoaded = false;
+  private platformTemplatesConnected = false;
+
+  public getPlatformTemplates(): PlatformTemplate[] {
+    this.initClient();
+    if (typeof window !== "undefined") {
+      this.loadPlatformTemplates();
+      this.connectPlatformTemplates();
+    }
+    return this.platformTemplates;
+  }
+
+  private loadPlatformTemplates() {
+    if (this.platformTemplatesLoaded) return;
+    this.platformTemplatesLoaded = true;
+    try {
+      const saved = localStorage.getItem("shopper_platform_templates");
+      if (saved) this.platformTemplates = JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load platform templates", e);
+    }
+    this.syncTemplateRegistry();
+  }
+
+  private connectPlatformTemplates() {
+    if (this.platformTemplatesConnected) return;
+    this.platformTemplatesConnected = true;
+    try {
+      onSnapshot(
+        collection(db, "platform_templates"),
+        (snapshot) => {
+          if (snapshot.empty) return;
+          this.platformTemplates = snapshot.docs
+            .map((d) => d.data() as PlatformTemplate)
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+          this.persistPlatformTemplates();
+          this.notify();
+        },
+        (error) => console.warn("[Firebase Firestore] Template listener warning:", error)
+      );
+    } catch (err) {
+      console.warn("[Firebase Firestore] Template listener failed:", err);
+    }
+  }
+
+  /** Published templates become themes every page can resolve by slug. */
+  private syncTemplateRegistry() {
+    registerUploadedThemes(this.platformTemplates.filter((t) => t.status === "published").map((t) => t.theme));
+  }
+
+  private persistPlatformTemplates() {
+    this.syncTemplateRegistry();
+    try {
+      localStorage.setItem("shopper_platform_templates", JSON.stringify(this.platformTemplates));
+    } catch (e) {
+      console.warn("Failed to save platform templates locally", e);
+    }
+  }
+
+  private saveTemplateDoc(template: PlatformTemplate) {
+    setDoc(doc(db, "platform_templates", template.id), JSON.parse(JSON.stringify(template))).catch((err) =>
+      console.warn("[Firebase Firestore] Template save error", err)
+    );
+  }
+
+  /** Hosts the template's images and saves it. Re-uploading a slug replaces that template. */
+  public async addPlatformTemplate(parsed: ParsedTemplate, fileName: string, publish: boolean): Promise<PlatformTemplate> {
+    this.getPlatformTemplates();
+    const slug = parsed.manifest.slug;
+    const images: { preview?: string; hero?: string; gallery: string[] } = {
+      preview: parsed.links.preview,
+      hero: parsed.links.hero,
+      gallery: [...parsed.links.gallery],
+    };
+    const storagePaths: string[] = [];
+    for (const role of ["preview", "hero"] as const) {
+      const file = parsed.files[role];
+      if (!file) continue;
+      const hosted = await hostPlatformImage(file, `platform_templates/${slug}-${role}`, role === "hero" ? 1800 : 1000);
+      images[role] = hosted.url;
+      if (hosted.storagePath) storagePaths.push(hosted.storagePath);
+    }
+    for (const [i, file] of parsed.files.gallery.entries()) {
+      const hosted = await hostPlatformImage(file, `platform_templates/${slug}-gallery-${i}`, 1400);
+      images.gallery.push(hosted.url);
+      if (hosted.storagePath) storagePaths.push(hosted.storagePath);
+    }
+
+    const now = new Date().toISOString();
+    const previous = this.platformTemplates.find((t) => t.id === slug);
+    const template: PlatformTemplate = {
+      id: slug,
+      status: publish ? "published" : "draft",
+      theme: manifestToTheme(parsed.manifest, images),
+      fileName,
+      storagePaths,
+      createdAt: previous?.createdAt || now,
+      updatedAt: now,
+    };
+    this.platformTemplates = [template, ...this.platformTemplates.filter((t) => t.id !== slug)];
+    this.persistPlatformTemplates();
+    this.saveTemplateDoc(template);
+    this.notify();
+    return template;
+  }
+
+  public setPlatformTemplateStatus(id: string, status: PlatformTemplate["status"]) {
+    this.getPlatformTemplates();
+    const current = this.platformTemplates.find((t) => t.id === id);
+    if (!current) return;
+    const updated = { ...current, status, updatedAt: new Date().toISOString() };
+    this.platformTemplates = this.platformTemplates.map((t) => (t.id === id ? updated : t));
+    this.persistPlatformTemplates();
+    this.saveTemplateDoc(updated);
+    this.notify();
+  }
+
+  /** Deletes a template. Stores using it fall back to the default template. */
+  public deletePlatformTemplate(id: string) {
+    this.getPlatformTemplates();
+    const template = this.platformTemplates.find((t) => t.id === id);
+    this.platformTemplates = this.platformTemplates.filter((t) => t.id !== id);
+    this.persistPlatformTemplates();
+    deleteDoc(doc(db, "platform_templates", id)).catch((err) => console.warn("[Firebase Firestore] Template delete error", err));
+    template?.storagePaths?.forEach((path) =>
+      deleteObject(storageRef(storage, path)).catch((err) => console.warn("[Firebase Storage] Template image delete error", err))
+    );
+    this.notify();
+  }
+
+  /** How many stores currently use a template. */
+  public countStoresUsingTheme(slug: string): number {
+    return this.getAllStores().filter((st) => st.activeThemeSlug === slug).length;
   }
 
   public updatePlatformBannerLink(id: string, link: string) {
@@ -2429,4 +2568,20 @@ function compressImageToDataUrl(file: File, maxWidth: number, quality: number): 
     };
     reader.readAsDataURL(file);
   });
+}
+
+/** Uploads an admin image to Firebase Storage, or keeps a compressed copy if that isn't available. */
+async function hostPlatformImage(file: File, pathBase: string, maxWidth = 1600): Promise<{ url: string; storagePath?: string }> {
+  try {
+    // give up after 20s so the admin isn't left waiting
+    const path = `${pathBase}-${Date.now().toString(36)}-${file.name.replace(/[^\w.-]/g, "_")}`;
+    const uploaded = await Promise.race([
+      uploadBytes(storageRef(storage, path), file, { contentType: file.type }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("upload timed out")), 20000)),
+    ]);
+    return { url: await getDownloadURL(uploaded.ref), storagePath: path };
+  } catch (err) {
+    console.warn("[Firebase Storage] Upload failed, storing a compressed copy instead:", err);
+    return { url: await compressImageToDataUrl(file, maxWidth, 0.82) };
+  }
 }

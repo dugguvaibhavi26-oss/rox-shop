@@ -1,0 +1,40 @@
+{
+  "format": "shopper-template@1",
+  "slug": "atelier-gallery",
+  "name": "Atelier Gallery",
+  "tagline": "A dark, image-first gallery for jewellery and art",
+  "description": "Lets the work speak: a statement hero over a tilted photo collage, simple category tabs, then a masonry wall of pieces with name, price and add-to-bag revealed on hover. A deep gallery black with gold details suits jewellery, art prints and handmade luxury.",
+  "tier": "pro",
+  "category": "Jewellery & Art",
+  "layout": "gallery-masonry",
+  "tokens": {
+    "background": "#0F0F0E",
+    "foreground": "#F5F2EA",
+    "card": "#1A1A18",
+    "cardForeground": "#F5F2EA",
+    "primary": "#F5F2EA",
+    "primaryForeground": "#0F0F0E",
+    "accent": "#C9A44C",
+    "accentForeground": "#0F0F0E",
+    "muted": "#1E1E1B",
+    "mutedForeground": "#A8A29A",
+    "border": "#2C2B27",
+    "radius": "2px",
+    "fontFamily": "Space Grotesk"
+  },
+  "previewColors": [
+    "#0F0F0E",
+    "#F5F2EA",
+    "#C9A44C",
+    "#2C2B27"
+  ],
+  "images": {
+    "preview": "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=900&q=80",
+    "hero": "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?auto=format&fit=crop&w=1800&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=80"
+    ]
+  }
+}

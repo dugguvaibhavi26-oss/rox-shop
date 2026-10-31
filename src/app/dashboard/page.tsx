@@ -24,7 +24,7 @@ import { ShopperWordmark } from "@/components/brand/shopper-wordmark";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
 import { HelpAndMore } from "@/components/dashboard/help-and-more";
 import { SetupWizard, SETUP_STEPS, isSetupStepDone } from "@/components/dashboard/setup-wizard";
-import { PLATFORM_THEMES, getTheme, ThemeDefinition } from "@/lib/themes";
+import { getTheme, getAllThemes, ThemeDefinition } from "@/lib/themes";
 import { AVAILABLE_FONTS, getFontFamily } from "@/lib/fonts";
 import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { Button } from "@/components/ui/button";
@@ -455,14 +455,23 @@ function DashboardPageContent() {
     return canAddProduct(store.products.length, store.planId);
   }, [store]);
 
+  // Built-in templates plus those published from the admin; `store` changes whenever the
+  // service notifies, so newly published templates show up here without a reload
+  const allThemes = useMemo(() => getAllThemes(), [store]);
   const filteredThemes = useMemo(() => {
-    const all = Object.values(PLATFORM_THEMES);
-    if (themeCategoryFilter === "all") return all;
-    if (themeCategoryFilter === "new-layouts") {
-      return all.filter((t) => t.layoutType && t.layoutType !== "editorial");
-    }
-    return all.filter((t) => t.category === themeCategoryFilter);
-  }, [themeCategoryFilter]);
+    if (themeCategoryFilter === "all") return allThemes;
+    if (themeCategoryFilter === "new-templates") return allThemes.filter((t) => t.source === "uploaded");
+    return allThemes.filter((t) => t.category === themeCategoryFilter);
+  }, [themeCategoryFilter, allThemes]);
+  const themeFilterTabs = useMemo(() => {
+    const uploaded = allThemes.filter((t) => t.source === "uploaded").length;
+    const categories = Array.from(new Set(allThemes.map((t) => t.category).filter(Boolean))) as string[];
+    return [
+      { id: "all", label: `All templates (${allThemes.length})` },
+      ...(uploaded ? [{ id: "new-templates", label: `New templates (${uploaded})` }] : []),
+      ...categories.map((c) => ({ id: c, label: c })),
+    ];
+  }, [allThemes]);
 
   const ownerName = useMemo(() => {
     if (store?.ownerName) return store.ownerName;
@@ -909,7 +918,7 @@ function DashboardPageContent() {
       setActiveTab("billing");
       return;
     }
-    const themeName = PLATFORM_THEMES[themeSlug]?.name || themeSlug;
+    const themeName = getTheme(themeSlug).name;
     setThemeAppliedToast(themeName);
     refreshStore();
     setTimeout(() => setThemeAppliedToast(null), 3500);
@@ -4945,7 +4954,7 @@ function DashboardPageContent() {
                       Storefront Themes
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
-                      Active: {PLATFORM_THEMES[store.activeThemeSlug || "classic-bloom"]?.name || "Lume Editorial"}
+                      Active: {getTheme(store.activeThemeSlug).name}
                     </span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-neutral-900 tracking-tight mt-1.5">
@@ -4968,21 +4977,7 @@ function DashboardPageContent() {
 
               {/* Niche Category Filter Tabs */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {[
-                  { id: "all", label: `All Themes (${Object.keys(PLATFORM_THEMES).length})` },
-                  { id: "new-layouts", label: "New Layouts (5)" },
-                  { id: "Fashion & Lifestyle", label: "Fashion & Lifestyle" },
-                  { id: "Fashion & Lookbook", label: "Lookbook Minimal" },
-                  { id: "Streetwear Drops", label: "Streetwear & Magazine" },
-                  { id: "Electronics & Tech", label: "Electronics & Bento" },
-                  { id: "Curated Boutique", label: "Sidebar Directory" },
-                  { id: "Wellness & Organic", label: "Botanical & Tea" },
-                  { id: "Beauty & Cosmetics", label: "Beauty & Skincare" },
-                  { id: "Jewelry & Luxury", label: "Jewelry & Luxury" },
-                  { id: "Home & Ceramics", label: "Home & Decor" },
-                  { id: "Gourmet & Organics", label: "Gourmet & Organics" },
-                  { id: "Handcrafted & Art", label: "Handcrafted & Art" },
-                ].map((tab) => {
+                {themeFilterTabs.map((tab) => {
                   const isActive = themeCategoryFilter === tab.id;
                   return (
                     <button

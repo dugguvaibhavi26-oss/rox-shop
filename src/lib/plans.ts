@@ -1,3 +1,5 @@
+import { getUploadedTheme } from "./themes";
+
 export interface PlanFeature {
   id: string;
   name: string;
@@ -42,22 +44,14 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     priceMonthly: 29900,
     priceFormatted: "₹299 / month",
     maxProducts: 50,
-    themesAllowed: [
-      "classic-bloom",
-      "vibrant-bazaar",
-      "pastel-luxe",
-      "aura-beauty",
-      "cyber-tech",
-      "bento-tech",
-      "botanical-wellness",
-    ],
+    themesAllowed: ["classic-bloom", "bento-tech", "botanical-wellness"],
     customDomain: false,
     maxBanners: 5,
     highlight: true,
     description: "Designed for growing boutique sellers with expanding catalogs.",
     features: [
       "Up to 50 products in catalog",
-      "7 Designer Themes (including Bento Tech & Kyoto Botanical)",
+      "Starter designer templates, including Bento Tech & Kyoto Botanical",
       "Multiple promotional hero banners & announcement bar",
       "Discount coupon & promo code engine",
       "Customer review moderation & approval",
@@ -74,13 +68,6 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     maxProducts: 999999,
     themesAllowed: [
       "classic-bloom",
-      "vibrant-bazaar",
-      "pastel-luxe",
-      "midnight-noir",
-      "artisan-craft",
-      "aura-beauty",
-      "cyber-tech",
-      "street-heat",
       "lookbook-minimal",
       "magazine-bold",
       "bento-tech",
@@ -92,7 +79,7 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     description: "For established businesses demanding scale, custom domains & luxury aesthetics.",
     features: [
       "Unlimited products & variants",
-      "All 13 Platform & Layout Themes (including Lookbook, Split Magazine & Sidebar)",
+      "Every designer template, including Lookbook, Split Magazine & Sidebar",
       "Custom domain support (e.g. www.yourshop.in / .com)",
       "Unlimited promotional banners & sliders",
       "Remove 'Powered by Shopper' watermark",
@@ -117,9 +104,14 @@ export function canAddProduct(currentCount: number, planId: string = "free"): {
   };
 }
 
+const TIER_RANK = { free: 0, starter: 1, pro: 2 } as const;
+
 export function isThemeAllowed(themeSlug: string, planId: string = "free"): boolean {
   const plan = PLATFORM_PLANS[planId] || PLATFORM_PLANS.free;
-  return plan.themesAllowed.includes(themeSlug);
+  if (plan.themesAllowed.includes(themeSlug)) return true;
+  // Templates uploaded by the admin open up by tier: Growth gets free + starter ones, Pro gets all
+  const uploaded = getUploadedTheme(themeSlug);
+  return Boolean(uploaded && TIER_RANK[uploaded.tier] <= TIER_RANK[plan.tier]);
 }
 
 export function isPaidPlan(planId: string = "free"): boolean {

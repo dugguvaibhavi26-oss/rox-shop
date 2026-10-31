@@ -1,0 +1,40 @@
+{
+  "format": "shopper-template@1",
+  "slug": "aurora-showroom",
+  "name": "Aurora Showroom",
+  "tagline": "A warm split-screen showroom for fashion labels",
+  "description": "Opens with a split hero and a featured piece, runs your collections along a scrolling ticker, then gives every collection its own swipeable shelf. Warm sand tones and a serif headline make new drops feel like a boutique window.",
+  "tier": "free",
+  "category": "Fashion & Apparel",
+  "layout": "showroom-split",
+  "tokens": {
+    "background": "#F7F3EE",
+    "foreground": "#1C1917",
+    "card": "#FFFFFF",
+    "cardForeground": "#1C1917",
+    "primary": "#1C1917",
+    "primaryForeground": "#F7F3EE",
+    "accent": "#C2410C",
+    "accentForeground": "#FFFFFF",
+    "muted": "#EFE8DF",
+    "mutedForeground": "#78716C",
+    "border": "#E4DACD",
+    "radius": "18px",
+    "fontFamily": "Playfair Display"
+  },
+  "previewColors": [
+    "#F7F3EE",
+    "#1C1917",
+    "#C2410C",
+    "#EFE8DF"
+  ],
+  "images": {
+    "preview": "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?auto=format&fit=crop&w=900&q=80",
+    "hero": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1800&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80"
+    ]
+  }
+}

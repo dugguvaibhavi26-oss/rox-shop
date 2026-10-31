@@ -46,14 +46,14 @@ describe("Platform Multi-Tenant Store & Subscription Engine", () => {
     // Classic bloom is free
     expect(isThemeAllowed("classic-bloom", "free")).toBe(true);
 
-    // Vibrant bazaar and Pastel luxe require starter plan
-    expect(isThemeAllowed("vibrant-bazaar", "free")).toBe(false);
-    expect(isThemeAllowed("pastel-luxe", "free")).toBe(false);
+    // Bento Tech and Kyoto Botanical require the starter plan
+    expect(isThemeAllowed("bento-tech", "free")).toBe(false);
+    expect(isThemeAllowed("botanical-wellness", "free")).toBe(false);
 
-    // Midnight noir requires pro plan
-    expect(isThemeAllowed("midnight-noir", "free")).toBe(false);
-    expect(isThemeAllowed("midnight-noir", "starter")).toBe(false);
-    expect(isThemeAllowed("midnight-noir", "pro")).toBe(true);
+    // Tokyo Lookbook requires the pro plan
+    expect(isThemeAllowed("lookbook-minimal", "free")).toBe(false);
+    expect(isThemeAllowed("lookbook-minimal", "starter")).toBe(false);
+    expect(isThemeAllowed("lookbook-minimal", "pro")).toBe(true);
   });
 
   it("upgrades store subscription and unlocks higher quotas and premium themes", () => {
@@ -65,12 +65,12 @@ describe("Platform Multi-Tenant Store & Subscription Engine", () => {
     expect(starterQuota.allowed).toBe(true);
     expect(starterQuota.limit).toBe(50);
 
-    // Theme activation should now succeed for vibrant-bazaar
-    const themeRes = storeService.setStoreTheme(testSubdomain, "vibrant-bazaar");
+    // Theme activation should now succeed for bento-tech
+    const themeRes = storeService.setStoreTheme(testSubdomain, "bento-tech");
     expect(themeRes.success).toBe(true);
 
     const storeAfterTheme = storeService.getStore(testSubdomain)!;
-    expect(storeAfterTheme.activeThemeSlug).toBe("vibrant-bazaar");
+    expect(storeAfterTheme.activeThemeSlug).toBe("bento-tech");
   });
 
   it("records buyer orders with unguessable tracking tokens and calculates totals", () => {

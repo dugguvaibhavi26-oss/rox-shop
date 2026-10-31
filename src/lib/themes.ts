@@ -1,3 +1,29 @@
+export type LayoutType =
+  | "editorial"
+  | "lookbook-minimal"
+  | "magazine-bold"
+  | "sidebar-storefront"
+  | "bento-tech"
+  | "botanical-wellness"
+  | "showroom-split"
+  | "catalogue-rows"
+  | "market-deals"
+  | "gallery-masonry";
+
+/** Layouts an uploaded template can choose, with a line describing each (shown in the admin). */
+export const TEMPLATE_LAYOUTS: Record<LayoutType, string> = {
+  editorial: "Classic editorial home with banner carousel, story categories and product grid",
+  "lookbook-minimal": "Full-bleed lookbook hero with a calm, airy product grid",
+  "magazine-bold": "Bold magazine split hero with bracketed category tags",
+  "sidebar-storefront": "Directory-style store with a filter sidebar",
+  "bento-tech": "Dark bento tiles for gadgets and tech",
+  "botanical-wellness": "Soft, rounded wellness layout",
+  "showroom-split": "Split hero, scrolling category ticker and a product shelf per collection",
+  "catalogue-rows": "Editorial catalogue: one large product row at a time, alternating sides",
+  "market-deals": "Busy marketplace: deal strip, bento promos, sticky filters and a dense grid",
+  "gallery-masonry": "Image-first masonry gallery with hover details",
+};
+
 export interface ThemeDefinition {
   id: string;
   slug: string;
@@ -6,7 +32,13 @@ export interface ThemeDefinition {
   tier: "free" | "starter" | "pro";
   category?: string;
   previewImage?: string;
-  layoutType?: "editorial" | "lookbook-minimal" | "magazine-bold" | "sidebar-storefront" | "bento-tech" | "botanical-wellness";
+  layoutType?: LayoutType;
+  /** Large image used by layouts that open with a hero (uploaded templates) */
+  heroImage?: string;
+  /** Extra imagery the layout uses for collages, promo tiles and interludes (uploaded templates) */
+  galleryImages?: string[];
+  /** "uploaded" for templates published from the admin dashboard */
+  source?: "builtin" | "uploaded";
   description: string;
   previewColors: string[];
   tokens: {
@@ -53,202 +85,6 @@ export const PLATFORM_THEMES: Record<string, ThemeDefinition> = {
       border: "#E5E5E5",
       radius: "8px",
       fontFamily: "Outfit",
-    },
-  },
-
-  "aura-beauty": {
-    id: "theme-2",
-    slug: "aura-beauty",
-    name: "Aura Glow & Skincare",
-    tagline: "Soft pastel warmth & organic luxury",
-    tier: "starter",
-    category: "Beauty & Cosmetics",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80",
-    description: "Gentle rose champagne tones, rounded pill containers, and soothing warmth tailored for skincare serums, clean cosmetics, beauty regimens, and self-care.",
-    previewColors: ["#9E4A3B", "#D97706", "#FFFBF8", "#F7EFE9"],
-    tokens: {
-      background: "#FFFBF8",
-      foreground: "#2D201D",
-      card: "#FFFFFF",
-      cardForeground: "#2D201D",
-      primary: "#9E4A3B",
-      primaryForeground: "#FFFFFF",
-      accent: "#D97706",
-      accentForeground: "#FFFFFF",
-      muted: "#F7EFE9",
-      mutedForeground: "#78716C",
-      border: "#F0E3D8",
-      radius: "16px",
-      fontFamily: "Plus Jakarta Sans",
-    },
-  },
-
-  "cyber-tech": {
-    id: "theme-3",
-    slug: "cyber-tech",
-    name: "Cyber Tech & Audio",
-    tagline: "Electric cyan & dark slate high-tech",
-    tier: "starter",
-    category: "Electronics & Tech",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
-    description: "Engineered for consumer electronics, wireless audio, mechanical keyboards, gaming gear, and mobile tech. High-contrast deep slate with electric neon accents.",
-    previewColors: ["#0B0F19", "#38BDF8", "#818CF8", "#111827"],
-    tokens: {
-      background: "#0B0F19",
-      foreground: "#F1F5F9",
-      card: "#111827",
-      cardForeground: "#F1F5F9",
-      primary: "#38BDF8",
-      primaryForeground: "#0B0F19",
-      accent: "#818CF8",
-      accentForeground: "#FFFFFF",
-      muted: "#1F2937",
-      mutedForeground: "#94A3B8",
-      border: "#1F2937",
-      radius: "10px",
-      fontFamily: "Inter",
-    },
-  },
-
-  "vibrant-bazaar": {
-    id: "theme-4",
-    slug: "vibrant-bazaar",
-    name: "Modern Emerald",
-    tagline: "Rich forest & amber warmth",
-    tier: "starter",
-    category: "Gourmet & Organics",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80",
-    description: "Deep forest emerald with warm amber highlights. High contrast and refined balance for specialty coffee, organic groceries, teas, and gourmet foods.",
-    previewColors: ["#0F2E23", "#D97706", "#F9F8F6", "#1C1917"],
-    tokens: {
-      background: "#FFFFFF",
-      foreground: "#1C1917",
-      card: "#FFFFFF",
-      cardForeground: "#1C1917",
-      primary: "#0F2E23",
-      primaryForeground: "#FFFFFF",
-      accent: "#D97706",
-      accentForeground: "#FFFFFF",
-      muted: "#F4F1EA",
-      mutedForeground: "#78716C",
-      border: "#E7E2D7",
-      radius: "8px",
-      fontFamily: "Playfair Display",
-    },
-  },
-
-  "pastel-luxe": {
-    id: "theme-5",
-    slug: "pastel-luxe",
-    name: "Nordic Atelier",
-    tagline: "Soft taupe & understated elegance",
-    tier: "starter",
-    category: "Home & Ceramics",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80",
-    description: "Muted taupe, warm stone, and refined slate accents. Clean architectural styling for interior living, handmade ceramics, artisanal furniture, and home decor.",
-    previewColors: ["#292524", "#78716C", "#F5F3EF", "#1C1917"],
-    tokens: {
-      background: "#FFFFFF",
-      foreground: "#1C1917",
-      card: "#FFFFFF",
-      cardForeground: "#1C1917",
-      primary: "#292524",
-      primaryForeground: "#FFFFFF",
-      accent: "#C2410C",
-      accentForeground: "#FFFFFF",
-      muted: "#F5F3EF",
-      mutedForeground: "#78716C",
-      border: "#E7E5E4",
-      radius: "12px",
-      fontFamily: "Outfit",
-    },
-  },
-
-  "midnight-noir": {
-    id: "theme-6",
-    slug: "midnight-noir",
-    name: "Midnight Obsidian",
-    tagline: "High-end luxury dark mode",
-    tier: "pro",
-    category: "Jewelry & Luxury",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
-    description: "Pure velvet obsidian black with champagne gold and silver precision. Designed for fine jewelry, luxury watches, couture designer wear, and premium fragrances.",
-    previewColors: ["#09090B", "#F59E0B", "#141417", "#FAFAFA"],
-    tokens: {
-      background: "#09090B",
-      foreground: "#FAFAFA",
-      card: "#141417",
-      cardForeground: "#FAFAFA",
-      primary: "#F59E0B",
-      primaryForeground: "#000000",
-      accent: "#D97706",
-      accentForeground: "#FFFFFF",
-      muted: "#27272A",
-      mutedForeground: "#A1A1AA",
-      border: "#27272A",
-      radius: "10px",
-      fontFamily: "Cinzel",
-    },
-  },
-
-  "street-heat": {
-    id: "theme-7",
-    slug: "street-heat",
-    name: "Sole & Street Heat",
-    tagline: "High-octane urban drops & sneakers",
-    tier: "pro",
-    category: "Sneakers & Streetwear",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=800&q=80",
-    description: "Built for streetwear labels, limited sneaker drops, oversized graphic tees, and hype accessories. Intense contrast, edgy card borders, and vibrant punchy accents.",
-    previewColors: ["#121214", "#FF334B", "#FBBF24", "#FFFFFF"],
-    tokens: {
-      background: "#121214",
-      foreground: "#FFFFFF",
-      card: "#1C1C20",
-      cardForeground: "#FFFFFF",
-      primary: "#FF334B",
-      primaryForeground: "#FFFFFF",
-      accent: "#FBBF24",
-      accentForeground: "#FFFFFF",
-      muted: "#282830",
-      mutedForeground: "#A1A1AA",
-      border: "#2E2E38",
-      radius: "6px",
-      fontFamily: "Space Grotesk",
-    },
-  },
-
-  "artisan-craft": {
-    id: "theme-8",
-    slug: "artisan-craft",
-    name: "Earthy Terracotta",
-    tagline: "Raw clay & sand botanicals",
-    tier: "pro",
-    category: "Handcrafted & Art",
-    layoutType: "editorial",
-    previewImage: "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80",
-    description: "Terracotta clay, warm sand, and raw linen neutrals. Designed for artisanal crafts, handmade leather, pottery studios, organic woven bags, and independent artisans.",
-    previewColors: ["#9A3412", "#57534E", "#FAF8F5", "#292524"],
-    tokens: {
-      background: "#FAF7F2",
-      foreground: "#292524",
-      card: "#FFFFFF",
-      cardForeground: "#292524",
-      primary: "#9A3412",
-      primaryForeground: "#FFFFFF",
-      accent: "#65A30D",
-      accentForeground: "#FFFFFF",
-      muted: "#F5EFE6",
-      mutedForeground: "#78716C",
-      border: "#E8DDD0",
-      radius: "10px",
-      fontFamily: "Cormorant Garamond",
     },
   },
 
@@ -396,9 +232,31 @@ export const PLATFORM_THEMES: Record<string, ThemeDefinition> = {
 
 import { getFontFamily } from "./fonts";
 
+// Templates uploaded and published from the admin dashboard, kept in sync by the store service
+let uploadedThemes: Record<string, ThemeDefinition> = {};
+
+export function registerUploadedThemes(themes: ThemeDefinition[]) {
+  uploadedThemes = {};
+  themes.forEach((t) => {
+    if (!PLATFORM_THEMES[t.slug]) uploadedThemes[t.slug] = { ...t, source: "uploaded" };
+  });
+}
+
+export function getUploadedTheme(slug: string): ThemeDefinition | undefined {
+  return uploadedThemes[slug];
+}
+
+/** Built-in themes followed by published uploaded templates. */
+export function getAllThemes(): ThemeDefinition[] {
+  return [...Object.values(PLATFORM_THEMES), ...Object.values(uploadedThemes)];
+}
+
 export function getTheme(slug?: string): ThemeDefinition {
   if (slug && PLATFORM_THEMES[slug]) {
     return PLATFORM_THEMES[slug];
+  }
+  if (slug && uploadedThemes[slug]) {
+    return uploadedThemes[slug];
   }
   return PLATFORM_THEMES["classic-bloom"];
 }
