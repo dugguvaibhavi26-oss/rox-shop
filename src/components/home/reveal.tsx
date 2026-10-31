@@ -128,13 +128,27 @@ export function Reveal({
   React.useEffect(() => {
     const el = ref.current;
     if (!spotlight || !el || typeof IntersectionObserver === "undefined") return;
-    if (window.matchMedia("(hover: hover)").matches) return;
+    // Scroll-triggered on touch screens and on any phone-width window (where hovering isn't
+    // how people browse); wide mouse screens keep using real hover.
+    const touch = window.matchMedia("(hover: none)");
+    const narrow = window.matchMedia("(max-width: 767px)");
+    const scrollMode = () => touch.matches || narrow.matches;
+    let inBand = false;
     // A thin band across the middle of the viewport
-    const io = new IntersectionObserver(([entry]) => setActive(entry.isIntersecting), {
-      rootMargin: "-42% 0px -42% 0px",
-    });
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inBand = entry.isIntersecting;
+        setActive(inBand && scrollMode());
+      },
+      { rootMargin: "-42% 0px -42% 0px" }
+    );
+    const onResize = () => setActive(inBand && scrollMode());
     io.observe(el);
-    return () => io.disconnect();
+    narrow.addEventListener("change", onResize);
+    return () => {
+      io.disconnect();
+      narrow.removeEventListener("change", onResize);
+    };
   }, [spotlight]);
 
   return (

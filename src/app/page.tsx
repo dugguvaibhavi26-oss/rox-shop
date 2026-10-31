@@ -652,6 +652,7 @@ function FeatureCard({
   className,
   delay = 0,
   from = "left",
+  index = 0,
 }: {
   eyebrow: string;
   title: string;
@@ -660,22 +661,79 @@ function FeatureCard({
   className?: string;
   delay?: number;
   from?: "left" | "right";
+  index?: number;
 }) {
   return (
-    <Reveal delay={delay} variant={from} spotlight className={cn("group flex flex-col", className)}>
-      <div className="relative flex-1 min-h-[300px] sm:min-h-[340px] rounded-[17px] bg-neutral-100 overflow-hidden flex items-center justify-center p-6 pt-12 transition-all duration-500 group-hot:-translate-y-1.5 group-hot:bg-neutral-200/70 group-hot:shadow-[0_24px_50px_-20px_rgba(0,0,0,0.25)]">
-        <span className="absolute top-5 left-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
-          {eyebrow}
-        </span>
-        <div className="transition-transform duration-700 ease-out group-hot:scale-[1.05] group-hot:-rotate-1">{children}</div>
-      </div>
-      <h3 className="mt-5 text-xl font-bold flex items-center gap-2">
-        {title}
-        <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 transition-all duration-300 group-hot:opacity-100 group-hot:translate-x-0" />
-      </h3>
-      <p className="mt-1.5 text-neutral-600 leading-relaxed">{text}</p>
-    </Reveal>
+    // On phones every card sticks a little lower than the last, so they pile up like a deck
+    <div data-stack-card className="max-md:sticky" style={{ top: `${88 + index * 14}px` }}>
+      <Reveal delay={delay} variant={from} spotlight className={cn("group flex flex-col", className)}>
+        <div
+          data-stack-face
+          className="origin-top flex flex-col max-md:rounded-[22px] max-md:bg-white max-md:border max-md:border-neutral-200 max-md:p-2.5 max-md:pb-5 max-md:shadow-[0_-12px_40px_-24px_rgba(0,0,0,0.35)] will-change-transform"
+        >
+          <div className="relative flex-1 min-h-[300px] sm:min-h-[340px] max-md:min-h-[240px] rounded-[17px] bg-neutral-100 overflow-hidden flex items-center justify-center p-6 pt-12 transition-all duration-500 group-hot:-translate-y-1.5 group-hot:bg-neutral-200/70 group-hot:shadow-[0_24px_50px_-20px_rgba(0,0,0,0.25)]">
+            <span className="absolute top-5 left-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              {eyebrow}
+            </span>
+            <span className="md:hidden absolute top-4 right-4 text-[10px] font-semibold tabular-nums text-neutral-400">0{index + 1} / 04</span>
+            <div className="transition-transform duration-700 ease-out group-hot:scale-[1.05] group-hot:-rotate-1">{children}</div>
+          </div>
+          <h3 className="mt-5 max-md:mt-4 max-md:px-2 text-xl font-bold flex items-center gap-2">
+            {title}
+            <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 transition-all duration-300 group-hot:opacity-100 group-hot:translate-x-0" />
+          </h3>
+          <p className="mt-1.5 max-md:px-2 text-neutral-600 leading-relaxed">{text}</p>
+        </div>
+      </Reveal>
+    </div>
   );
+}
+
+/** Phones: as each stacked card is covered by the next, shrink and dim it slightly. */
+function useCardStack(ref: React.RefObject<HTMLElement | null>) {
+  React.useEffect(() => {
+    const root = ref.current;
+    if (!root || typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-stack-card]"));
+      const faces = cards.map((c) => c.querySelector<HTMLElement>("[data-stack-face]"));
+      cards.forEach((card, i) => {
+        const face = faces[i];
+        if (!face) return;
+        const next = cards[i + 1];
+        if (!mq.matches || reduce.matches || !next) {
+          face.style.transform = "";
+          face.style.filter = "";
+          return;
+        }
+        const a = card.getBoundingClientRect();
+        const b = next.getBoundingClientRect();
+        // 0 while the next card is a full card-height away, 1 once it has slid over this one
+        const p = Math.min(1, Math.max(0, 1 - (b.top - a.top) / a.height));
+        face.style.transform = `scale(${1 - p * 0.07})`;
+        face.style.filter = `brightness(${1 - p * 0.12})`;
+      });
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    mq.addEventListener("change", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      mq.removeEventListener("change", onScroll);
+    };
+  }, [ref]);
 }
 
 function FeatureCards() {
@@ -683,6 +741,8 @@ function FeatureCards() {
     .map((t) => t.previewImage)
     .filter(Boolean)
     .slice(0, 5) as string[];
+  const stackRef = React.useRef<HTMLDivElement>(null);
+  useCardStack(stackRef);
 
   return (
     <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32">
@@ -693,8 +753,9 @@ function FeatureCards() {
         text="One platform for your store, payments, orders and marketing. Built for sellers who grew on social."
       />
 
-      <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-14">
+      <div ref={stackRef} className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-14 max-md:gap-y-[38vh] max-md:pb-6">
         <FeatureCard
+          index={0}
           eyebrow="Customizable themes"
           title="Create a stunning store in seconds"
           text="Designer themes for fashion, beauty, tech, home and more. Switch anytime — your products come with you."
@@ -721,6 +782,7 @@ function FeatureCards() {
         </FeatureCard>
 
         <FeatureCard
+          index={1}
           eyebrow="Direct payments"
           title="Keep 100% of every sale"
           delay={120}
@@ -731,6 +793,7 @@ function FeatureCards() {
         </FeatureCard>
 
         <FeatureCard
+          index={2}
           eyebrow="Social selling"
           title="Sell where your buyers already are"
           text="Share products on Instagram and WhatsApp. Buyers check out on your store and get order updates instantly."
@@ -739,6 +802,7 @@ function FeatureCards() {
         </FeatureCard>
 
         <FeatureCard
+          index={3}
           eyebrow="Insights"
           title="Know what's working"
           delay={120}

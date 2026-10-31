@@ -1779,7 +1779,6 @@ function DashboardPageContent() {
                                   strokeWidth="1.5"
                                 />
                               ))}
-                              <circle cx={analyticsData.lastPoint.x} cy={analyticsData.lastPoint.y} r="10" fill="#A855F7" opacity="0.18" className="animate-ping [transform-box:fill-box] [transform-origin:center]" />
                               <circle cx={analyticsData.lastPoint.x} cy={analyticsData.lastPoint.y} r="4.5" fill="#A855F7" />
                             </svg>
                           </div>
@@ -1868,7 +1867,6 @@ function DashboardPageContent() {
                     ) : (
                       <div className="flex items-center gap-4">
                         <div className="relative w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                          <span aria-hidden className="absolute inset-0 rounded-full bg-emerald-200 animate-ping opacity-40" />
                           <Check className="relative w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
