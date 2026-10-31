@@ -24,6 +24,7 @@ import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
 import { HelpAndMore } from "@/components/dashboard/help-and-more";
 import { SetupWizard, SETUP_STEPS, isSetupStepDone } from "@/components/dashboard/setup-wizard";
+import { LockedFeature } from "@/components/dashboard/locked-feature";
 import { getTheme, getAllThemes, ThemeDefinition } from "@/lib/themes";
 import { AVAILABLE_FONTS, getFontFamily } from "@/lib/fonts";
 import { siteConfig, getStoreDomain, getStoreUrl } from "@/lib/config/site";
@@ -4609,60 +4610,36 @@ function DashboardPageContent() {
         {activeTab === "reviews" && (
           <div className="mt-6 space-y-6 animate-enter-blur">
             {!canUseReviews(store.planId) ? (
-              <div className="p-8 sm:p-12 rounded-xl bg-white border border-neutral-200 text-center max-w-2xl mx-auto shadow-xs">
-                <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-7 h-7" />
-                </div>
-                <Badge variant="neutral" className="bg-amber-100 text-amber-900 border border-amber-300 text-[11px] mb-3">
-                  Paid Plan Feature Exclusive
-                </Badge>
-                <h3 className="text-lg font-bold text-neutral-900 mb-2">
-                  Customer Reviews & Star Ratings are Locked
-                </h3>
-                <p className="text-xs text-neutral-600 mb-6 leading-relaxed max-w-lg mx-auto">
-                  Customer reviews, testimonial moderation, and verified rating badges on website product cards are exclusively available on paid plans (<strong>Growth Plan ₹299/mo</strong> or <strong>Pro Merchant ₹799/mo</strong>).
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left mb-6">
-                  <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200">
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-500 mb-1.5" />
-                    <h5 className="font-bold text-xs text-neutral-900">Product Card Badges</h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">Showcase 5-star ratings directly on storefront product cards.</p>
+              <LockedFeature
+                title="Customer reviews"
+                text="Let buyers rate what they bought. Star ratings build trust and help new visitors decide."
+                planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
+                ctaLabel="Unlock with Growth"
+                onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
+                perks={[
+                  { icon: Star, title: "Stars on every product", text: "Ratings show right on your product cards" },
+                  { icon: ShieldCheck, title: "You approve first", text: "Hide or delete a review before it goes live" },
+                  { icon: TrendingUp, title: "More sales", text: "Shoppers buy more from stores with reviews" },
+                ]}
+                preview={
+                  <div className="mx-auto max-w-sm space-y-2.5">
+                    {[0, 1, 2].map((k) => (
+                      <div key={k} className="flex items-center gap-3 rounded-2xl bg-white/10 p-3">
+                        <span className="h-9 w-9 shrink-0 rounded-full bg-white/25" />
+                        <span className="flex-1 space-y-1.5">
+                          <span className="block h-2 w-20 rounded bg-white/50" />
+                          <span className="block h-2 w-36 rounded bg-white/25" />
+                        </span>
+                        <span className="flex gap-0.5 text-amber-400">
+                          {[0, 1, 2, 3, 4].map((x) => (
+                            <Star key={x} className="h-3 w-3 fill-current" />
+                          ))}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 mb-1.5" />
-                    <h5 className="font-bold text-xs text-neutral-900">Review Moderation</h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">Approve, hide, or delete customer reviews before they show up.</p>
-                  </div>
-                  <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200">
-                    <Sparkles className="w-4 h-4 text-neutral-900 mb-1.5" />
-                    <h5 className="font-bold text-xs text-neutral-900">Conversion Boost</h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">Authentic reviews boost store conversion rate by up to 34%.</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <Button
-                    size="md"
-                    className="w-full sm:w-auto bg-[#111111] text-white hover:bg-black rounded-md text-xs px-6 py-2.5 font-bold"
-                    onClick={() => {
-                      setActiveTab("billing");
-                    }}
-                  >
-                    Upgrade to Growth Plan (₹299/mo)
-                  </Button>
-                  <Button
-                    size="md"
-                    variant="outline"
-                    className="w-full sm:w-auto rounded-md text-xs px-6 py-2.5 font-semibold"
-                    onClick={() => {
-                      setActiveTab("billing");
-                    }}
-                  >
-                    Upgrade to Pro Merchant (₹799/mo)
-                  </Button>
-                </div>
-              </div>
+                }
+              />
             ) : (
               <div className="p-6 rounded-lg bg-white border border-neutral-200">
                 <div className="flex items-center justify-between mb-4">
@@ -5916,50 +5893,30 @@ function DashboardPageContent() {
           <div className="mt-6 space-y-6 animate-enter-blur">
             {!isPaidPlan(store.planId) ? (
               /* Paywall Gating for Free Plan */
-              <div className="p-8 sm:p-12 rounded-xl bg-white border border-neutral-200 text-center max-w-2xl mx-auto shadow-xs space-y-5">
-                <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
-                  <Plug className="w-8 h-8" />
-                </div>
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
-                    Paid Merchant Exclusive
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 mt-3">
-                    Email Notifications
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-600 max-w-md mx-auto mt-2 leading-relaxed">
-                    Connect your Gmail to send product launch alerts and newsletters directly to subscribed customers.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 max-w-md mx-auto text-left text-xs space-y-2.5">
-                  <div className="flex items-center gap-2 text-neutral-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Direct Gmail connection for reliable delivery</span>
+              <LockedFeature
+                title="Email notifications"
+                text="Connect your Gmail and tell subscribers the moment you add something new."
+                planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
+                ctaLabel="Unlock with Growth"
+                onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
+                perks={[
+                  { icon: Mail, title: "Sent from your Gmail", text: "Emails come from you, not a no-reply address" },
+                  { icon: Send, title: "New drop alerts", text: "Email every subscriber about new products" },
+                  { icon: Bell, title: "Newsletter sign-up", text: "Adds a subscribe box to your store's footer" },
+                ]}
+                preview={
+                  <div className="mx-auto max-w-xs rounded-2xl bg-white/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span className="h-2 w-28 rounded bg-white/50" />
+                    </div>
+                    <div className="mt-3 h-16 rounded-xl bg-gradient-to-br from-amber-300/70 to-rose-300/50" />
+                    <span className="mt-3 block h-2 w-40 rounded bg-white/35" />
+                    <span className="mt-2 block h-2 w-28 rounded bg-white/20" />
+                    <span className="mt-3 block h-7 w-24 rounded-lg bg-white/60" />
                   </div>
-                  <div className="flex items-center gap-2 text-neutral-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Send product drop alerts to all newsletter subscribers</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-neutral-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Enables newsletter subscription box in storefront footer</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-neutral-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Automated alerts when you launch a new category</span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => setIsUpgradeModalOpen(true)}
-                    className="bg-[#111111] text-white hover:bg-black rounded-md text-xs px-6 py-2.5 font-bold shadow-xs"
-                  >
-                    Upgrade to Growth or Pro Plan
-                  </Button>
-                </div>
-              </div>
+                }
+              />
             ) : (
               /* Full Plugins & Gmail Workspace */
               <div className="space-y-6">
