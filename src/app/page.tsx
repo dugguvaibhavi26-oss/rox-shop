@@ -1395,7 +1395,7 @@ function Pricing() {
                 )}
 
                 <Link
-                  href="/register"
+                  href={plan.id === "free" ? "/register" : `/register?plan=${plan.id}&cycle=${billingCycle}`}
                   className={cn(
                     "mt-6 py-3.5 rounded-[14px] text-sm font-semibold text-center transition-all duration-300 hover:shadow-lg active:scale-[0.98]",
                     hi ? "bg-white text-black hover:bg-neutral-200" : "bg-black text-white hover:bg-neutral-800"

@@ -215,17 +215,111 @@ export function calculatePlanPrice(
   };
 }
 
+// --- Feature access per plan, editable by the admin -------------------------------------------
+// Every limit and feature check below reads from here, so an admin change applies to every store
+// on that plan (dashboard, storefront and checkout) without a code change.
+
+export type PlanId = "free" | "starter" | "pro";
+export const PLAN_IDS: PlanId[] = ["free", "starter", "pro"];
+/** Stand-in for "no limit" */
+export const UNLIMITED = 999999;
+
+export interface PlanAccess {
+  maxProducts: number;
+  maxBanners: number;
+  coupons: boolean;
+  reviews: boolean;
+  email: boolean;
+  customDomain: boolean;
+}
+
+const DEFAULT_PLAN_ACCESS: Record<PlanId, PlanAccess> = {
+  free: { maxProducts: 75, maxBanners: 1, coupons: false, reviews: false, email: false, customDomain: false },
+  starter: { maxProducts: 200, maxBanners: 5, coupons: true, reviews: true, email: false, customDomain: false },
+  pro: { maxProducts: UNLIMITED, maxBanners: 20, coupons: true, reviews: true, email: true, customDomain: true },
+};
+
+let planAccess: Record<PlanId, PlanAccess> = cloneAccess(DEFAULT_PLAN_ACCESS);
+
+function cloneAccess(a: Record<PlanId, PlanAccess>): Record<PlanId, PlanAccess> {
+  return { free: { ...a.free }, starter: { ...a.starter }, pro: { ...a.pro } };
+}
+
+function toPlanId(planId: string): PlanId {
+  return planId === "starter" || planId === "pro" ? planId : "free";
+}
+
+export function getDefaultPlanAccess(): Record<PlanId, PlanAccess> {
+  return cloneAccess(DEFAULT_PLAN_ACCESS);
+}
+
+export function getAllPlanAccess(): Record<PlanId, PlanAccess> {
+  return cloneAccess(planAccess);
+}
+
+export function getPlanAccess(planId: string = "free"): PlanAccess {
+  return planAccess[toPlanId(planId)];
+}
+
+/** Applies saved settings (missing or invalid values fall back to the defaults) and keeps the plan cards in step. */
+export function applyPlanAccess(saved?: Partial<Record<string, Partial<PlanAccess>>> | null) {
+  const next = getDefaultPlanAccess();
+  for (const id of PLAN_IDS) {
+    const s = saved?.[id];
+    if (!s) continue;
+    const num = (v: unknown, fallback: number) =>
+      typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.min(Math.round(v), UNLIMITED) : fallback;
+    const bool = (v: unknown, fallback: boolean) => (typeof v === "boolean" ? v : fallback);
+    next[id] = {
+      maxProducts: num(s.maxProducts, next[id].maxProducts),
+      maxBanners: num(s.maxBanners, next[id].maxBanners),
+      coupons: bool(s.coupons, next[id].coupons),
+      reviews: bool(s.reviews, next[id].reviews),
+      email: bool(s.email, next[id].email),
+      customDomain: bool(s.customDomain, next[id].customDomain),
+    };
+  }
+  planAccess = next;
+
+  for (const id of PLAN_IDS) {
+    const plan = PLATFORM_PLANS[id];
+    const access = planAccess[id];
+    plan.maxProducts = access.maxProducts;
+    plan.maxBanners = access.maxBanners;
+    plan.customDomain = access.customDomain;
+    // keep the product line on the plan cards true to the limit
+    const productLine = access.maxProducts >= UNLIMITED ? "Unlimited products" : `Up to ${access.maxProducts} products`;
+    plan.features = plan.features.map((f) => (/^(Up to \d+ products|Unlimited products)$/.test(f) ? productLine : f));
+  }
+}
+
 export function canUseReviews(planId: string = "free"): boolean {
-  return isPaidPlan(planId);
+  return getPlanAccess(planId).reviews;
 }
 
-/** Discount coupons: Growth and Pro. */
+/** Discount coupons (Growth and Pro by default). */
 export function canUseCoupons(planId: string = "free"): boolean {
-  return isPaidPlan(planId);
+  return getPlanAccess(planId).coupons;
 }
 
-/** Email integration (Gmail alerts and the store newsletter): Pro only. */
+/** Email integration: Gmail alerts and the store newsletter (Pro by default). */
 export function canUseEmail(planId: string = "free"): boolean {
-  return planId === "pro";
+  return getPlanAccess(planId).email;
+}
+
+/** Connecting your own domain (Pro by default). */
+export function canUseCustomDomain(planId: string = "free"): boolean {
+  return getPlanAccess(planId).customDomain;
+}
+
+/** The cheapest plan that unlocks a feature, for "Unlock with …" labels. */
+export function cheapestPlanWith(feature: "coupons" | "reviews" | "email" | "customDomain"): PlanFeature | undefined {
+  const id = PLAN_IDS.find((p) => planAccess[p][feature]);
+  return id ? PLATFORM_PLANS[id] : undefined;
+}
+
+export function canAddBanner(currentCount: number, planId: string = "free"): { allowed: boolean; limit: number } {
+  const limit = getPlanAccess(planId).maxBanners;
+  return { allowed: currentCount < limit, limit };
 }
 

@@ -18,7 +18,7 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS,
   DEFAULT_HOMEPAGE_SECTION_IDS,
 } from "@/lib/store-service";
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent, isPaidPlan, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent, cheapestPlanWith, canAddBanner, isPaidPlan, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
 import { CountUp } from "@/components/home/reveal";
 import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";
@@ -210,7 +210,7 @@ function DashboardPageContent() {
     };
   }, [isNotificationOpen]);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
-  const [notifications, setNotifications] = useState([
+  const [baseNotifications, setNotifications] = useState([
     {
       id: "n-1",
       title: "New Order #1004 Received",
@@ -286,6 +286,34 @@ function DashboardPageContent() {
     setSubscriptionModalBillingCycle(cycle);
     setIsSubscriptionModalOpen(true);
   };
+  // A new approved / rejected payment lights up the bell
+  const unseenPlanUpdateId = store?.subscriptionHistory?.find((h) => h.seenBySeller === false)?.id;
+  useEffect(() => {
+    if (unseenPlanUpdateId) setHasUnreadNotifications(true);
+  }, [unseenPlanUpdateId]);
+
+  // Checkout in the URL (?checkout=starter|pro&cycle=..., or ?upgrade= from sign-up): open the
+  // upgrade page once the store loads, so arriving from sign-up or refreshing mid-payment lands there
+  const checkoutParam = searchParams.get("checkout") || searchParams.get("upgrade");
+  const cycleParam = searchParams.get("cycle");
+  const openedCheckoutFor = React.useRef("");
+  useEffect(() => {
+    if (!store || (checkoutParam !== "starter" && checkoutParam !== "pro")) return;
+    if (openedCheckoutFor.current === store.subdomain) return;
+    openedCheckoutFor.current = store.subdomain;
+    if (store.planId === checkoutParam && !store.pendingSubscription) {
+      // already on that plan: drop the leftover checkout params
+      const url = new URL(window.location.href);
+      ["checkout", "upgrade", "cycle", "step", "ref"].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState(window.history.state, "", url.href);
+      return;
+    }
+    const cycle: BillingCycle = cycleParam === "quarterly" || cycleParam === "yearly" ? cycleParam : "monthly";
+    setActiveTab("billing");
+    openSubscriptionModal(checkoutParam, cycle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.subdomain, checkoutParam]);
+
   // list filters for the products, orders and customers pages
   const [productSearch, setProductSearch] = useState("");
   const [productFilter, setProductFilter] = useState<"all" | "in" | "low" | "out">("all");
@@ -937,16 +965,6 @@ function DashboardPageContent() {
     openSubscriptionModal(planId);
   };
 
-  const handleLegacyInstantUpgradePlan = (planId: "starter" | "pro") => {
-    if (!store) return;
-    storeService.upgradeStorePlan(store.subdomain, planId);
-    setUpgradeSuccess(true);
-    refreshStore();
-    setTimeout(() => {
-      setUpgradeSuccess(false);
-    }, 3000);
-  };
-
   const handleActivateTheme = (themeSlug: string) => {
     if (!store) return;
     const res = storeService.setStoreTheme(store.subdomain, themeSlug);
@@ -1238,6 +1256,12 @@ function DashboardPageContent() {
       isActive: true,
     };
 
+    const bannerQuota = canAddBanner(store.banners.length, store.planId);
+    if (!bannerQuota.allowed) {
+      alert(`Your plan allows ${bannerQuota.limit} banner${bannerQuota.limit === 1 ? "" : "s"}. Upgrade to add more.`);
+      return;
+    }
+
     storeService.saveBanners(store.subdomain, [...store.banners, newBanner]);
     refreshStore();
     setIsBannerModalOpen(false);
@@ -1411,10 +1435,37 @@ function DashboardPageContent() {
     profile: { title: "Profile", text: "Your account, store and plan." },
   };
 
+  // Approved / rejected subscription payments, newest first, shown in the bell with the rest
+  const planNotices = (store.subscriptionHistory || [])
+    .filter((h) => h.status === "verified" || (h.status === "rejected" && h.rejectedAt))
+    .slice(0, 5)
+    .map((h) => {
+      const when = h.status === "verified" ? h.verifiedAt : h.rejectedAt;
+      return {
+        id: `plan-${h.id}`,
+        title: h.status === "verified" ? `${h.planName} plan verified` : "Payment not verified",
+        desc:
+          h.status === "verified"
+            ? `Payment of ${h.amountFormatted} confirmed. All ${h.planName} features are unlocked.`
+            : `${h.amountFormatted} for ${h.planName}: ${h.note || "we couldn't confirm it"}. You're still on your current plan.`,
+        time: when ? new Date(when).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "",
+        type: "plan",
+        unread: h.seenBySeller === false,
+      };
+    });
+  const notifications = [...planNotices, ...baseNotifications];
+  const unseenPlanUpdate = (store.subscriptionHistory || []).find((h) => h.seenBySeller === false);
+
+  // "Growth plan · ₹299/mo": whichever plan the admin has set to unlock this feature
+  const unlockLabel = (feature: "coupons" | "reviews" | "email") => {
+    const plan = cheapestPlanWith(feature);
+    return plan ? `${plan.name} plan · ${plan.priceFormatted.split(" ")[0]}/mo` : "Not available on any plan";
+  };
   const unreadCount = notifications.filter((n) => n.unread).length;
   const markAllNotificationsRead = () => {
     setNotifications((list) => list.map((n) => ({ ...n, unread: false })));
     setHasUnreadNotifications(false);
+    storeService.markSubscriptionUpdatesSeen(store.subdomain);
   };
   const openNotification = (n: (typeof notifications)[number]) => {
     setNotifications((list) => {
@@ -1423,6 +1474,11 @@ function DashboardPageContent() {
       return next;
     });
     setIsNotificationOpen(false);
+    if (n.type === "plan") {
+      storeService.markSubscriptionUpdatesSeen(store.subdomain);
+      setActiveTab("billing");
+      return;
+    }
     if (n.type === "order") setActiveTab("orders");
     else if (n.type === "stock") setActiveTab("products");
     else if (n.type === "feature") setActiveTab("discounts");
@@ -1434,7 +1490,9 @@ function DashboardPageContent() {
         ? { icon: Package, tone: "bg-amber-50 text-amber-600" }
         : type === "feature"
           ? { icon: Sparkles, tone: "bg-violet-50 text-violet-600" }
-          : { icon: Bell, tone: "bg-sky-50 text-sky-600" };
+          : type === "plan"
+            ? { icon: ShieldCheck, tone: "bg-emerald-50 text-emerald-600" }
+            : { icon: Bell, tone: "bg-sky-50 text-sky-600" };
 
   const startAddProduct = () => {
     if (!productQuota.allowed) {
@@ -1695,6 +1753,44 @@ function DashboardPageContent() {
       <div className="pt-16 md:pl-64 flex flex-col min-h-screen">
         {/* Main Workspace Area (Scrolls smoothly under the fixed top header) */}
         <main className="flex-1 p-4 sm:p-8 pb-28 md:pb-12 max-w-7xl w-full mx-auto">
+          {unseenPlanUpdate && (
+            <div
+              className={`mb-5 flex items-start gap-3 rounded-2xl p-4 ${
+                unseenPlanUpdate.status === "verified" ? "bg-neutral-950 text-white" : "border border-red-200 bg-red-50 text-red-900"
+              }`}
+            >
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  unseenPlanUpdate.status === "verified" ? "bg-emerald-500 text-white" : "bg-red-100 text-red-600"
+                }`}
+              >
+                {unseenPlanUpdate.status === "verified" ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">
+                  {unseenPlanUpdate.status === "verified"
+                    ? `Payment verified. You're on ${unseenPlanUpdate.planName} now.`
+                    : `Your ${unseenPlanUpdate.planName} payment couldn't be verified`}
+                </p>
+                <p className={`mt-0.5 text-xs ${unseenPlanUpdate.status === "verified" ? "text-white/60" : "text-red-700"}`}>
+                  {unseenPlanUpdate.status === "verified"
+                    ? `All ${unseenPlanUpdate.planName} features are unlocked.`
+                    : `${unseenPlanUpdate.note || ""} You're still on your current plan.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => storeService.markSubscriptionUpdatesSeen(store.subdomain)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  unseenPlanUpdate.status === "verified" ? "bg-white text-neutral-950" : "bg-red-600 text-white"
+                }`}
+                style={{ minHeight: 0 }}
+              >
+                Got it
+              </button>
+            </div>
+          )}
+
           {/* Page title (overview greets you inside the hero card) */}
           {activeTab !== "overview" && (
             <div className="mb-5 sm:mb-8 hero-rise flex items-center sm:items-start gap-3 sm:gap-4">
@@ -4206,8 +4302,8 @@ function DashboardPageContent() {
             <LockedFeature
               title="Discount coupons"
               text="Create codes like WELCOME10 that buyers type at checkout to get money off."
-              planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
-              ctaLabel="Unlock with Growth"
+              planLabel={unlockLabel("coupons")}
+              ctaLabel={`Unlock with ${cheapestPlanWith("coupons")?.name ?? "an upgrade"}`}
               onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
               perks={[
                 { icon: Percent, title: "Percent or flat off", text: "10% off or ₹100 off, your choice" },
@@ -4661,8 +4757,8 @@ function DashboardPageContent() {
               <LockedFeature
                 title="Customer reviews"
                 text="Let buyers rate what they bought. Star ratings build trust and help new visitors decide."
-                planLabel={`Growth plan · ${PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo`}
-                ctaLabel="Unlock with Growth"
+                planLabel={unlockLabel("reviews")}
+                ctaLabel={`Unlock with ${cheapestPlanWith("reviews")?.name ?? "an upgrade"}`}
                 onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
                 perks={[
                   { icon: Star, title: "Stars on every product", text: "Ratings show right on your product cards" },
@@ -5590,7 +5686,6 @@ function DashboardPageContent() {
           const limit = currentPlan.maxProducts;
           const unlimited = limit >= 999999;
           const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
-          const pending = store.pendingSubscription;
           const history = store.subscriptionHistory || [];
           return (
             <div className="mt-6 space-y-4 animate-enter-blur">
@@ -5601,124 +5696,76 @@ function DashboardPageContent() {
                 </div>
               )}
 
-              {/* Pending Subscription Verification Notice */}
-              {pending && (
-                <div className="rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-50/90 via-amber-50/50 to-white p-5 sm:p-6 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/80">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20">
-                        <Clock className="h-6 w-6 animate-spin-slow" />
-                      </div>
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-ping" />
-                          <span>Verification in Progress · 1–2 Hours</span>
-                        </div>
-                        <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-950 mt-1">
-                          Upgrade to {pending.planName} Under Review
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSubscriptionModalPlanId(pending.planId);
-                          setIsSubscriptionModalOpen(true);
-                        }}
-                        className="h-9 px-3.5 rounded-xl bg-neutral-900 text-white text-xs font-semibold hover:bg-black transition-colors cursor-pointer"
-                      >
-                        View Payment Status
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm("Cancel this pending subscription verification?")) {
-                            storeService.cancelSubscriptionRequest(store.subdomain);
-                            refreshStore();
-                          }
-                        }}
-                        className="h-9 px-3 rounded-xl border border-neutral-300 text-neutral-700 text-xs font-semibold hover:bg-neutral-100 transition-colors cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Reassurance Message ("You can quit now, verification takes 1-2 hrs") */}
-                  <div className="mt-4 rounded-2xl bg-white border border-amber-200 p-4 text-xs text-neutral-700 space-y-1.5">
-                    <div className="flex items-center gap-2 text-amber-950 font-bold text-sm">
-                      <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                      <span>You can safely quit or explore — verification may take 1–2 hours</span>
-                    </div>
-                    <p className="leading-relaxed pl-6">
-                      We received your payment of <b className="text-neutral-950">{pending.amountFormatted}</b> (Ref:{" "}
-                      <span className="font-mono font-semibold">{pending.referenceId}</span>
-                      {pending.paymentUtr ? `, UTR: ${pending.paymentUtr}` : ""}). Bank reconciliation is
-                      automated with our banking gateway. You do not need to stay on this screen; your higher
-                      limits and features will automatically unlock.
+              {/* Subscription Invoices & Billing History */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-neutral-900">Billing History & Invoices</h4>
+                    <p className="text-xs text-neutral-500">
+                      Your platform subscription transactions, receipts and verification statuses.
                     </p>
                   </div>
-
-                  {/* Interactive Options while waiting */}
-                  <div className="mt-4 pt-3 border-t border-amber-200/60">
-                    <span className="text-xs font-bold text-neutral-900 block mb-2">
-                      Stay productive while verification completes:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("settings")}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
-                      >
-                        <Store className="h-4 w-4 text-blue-600 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="block text-xs font-bold text-neutral-900">Setup Store</span>
-                          <span className="block text-[11px] text-neutral-500 truncate">Configure shipping & logo</span>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("overview")}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
-                      >
-                        <LayoutDashboard className="h-4 w-4 text-violet-600 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="block text-xs font-bold text-neutral-900">Explore Dashboard</span>
-                          <span className="block text-[11px] text-neutral-500 truncate">Track store activity</span>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("themes")}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-neutral-200 hover:border-black text-left transition-colors cursor-pointer"
-                      >
-                        <Palette className="h-4 w-4 text-amber-600 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="block text-xs font-bold text-neutral-900">Preview Themes</span>
-                          <span className="block text-[11px] text-neutral-500 truncate">Choose your new look</span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Demo Instant Test Verification helper */}
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        storeService.verifySubscriptionPayment(store.subdomain);
-                        refreshStore();
-                      }}
-                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 hover:text-amber-950 underline decoration-dashed cursor-pointer"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      <span>Simulate Bank Approval (Instant Test)</span>
-                    </button>
-                  </div>
                 </div>
-              )}
+
+                {history.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-xs text-neutral-500">
+                    No payment transactions yet. When you upgrade your plan via UPI, your payment receipts and status will show here.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 overflow-hidden">
+                    {history.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white hover:bg-neutral-50/50 transition-colors"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-neutral-900">{item.planName}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                item.status === "verified"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : item.status === "pending_verification"
+                                  ? "bg-amber-100 text-amber-800 animate-pulse"
+                                  : "bg-neutral-100 text-neutral-600"
+                              }`}
+                            >
+                              {item.status === "verified"
+                                ? "Active / Verified"
+                                : item.status === "pending_verification"
+                                ? "Verifying (1–2 hrs)"
+                                : item.rejectedAt
+                                ? "Rejected"
+                                : "Cancelled"}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-500 font-mono">
+                            <span>Ref: {item.referenceId}</span>
+                            {item.paymentUtr && <span>UTR: {item.paymentUtr}</span>}
+                            <span>{new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                          <span className="font-bold text-sm text-neutral-900 font-mono">{item.amountFormatted}</span>
+                          {item.status === "pending_verification" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSubscriptionModalPlanId(item.planId);
+                                setIsSubscriptionModalOpen(true);
+                              }}
+                              className="text-xs font-semibold text-neutral-700 hover:text-black underline cursor-pointer"
+                            >
+                              Check Status
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
                 <div className="min-w-0">
@@ -5817,74 +5864,6 @@ function DashboardPageContent() {
                 })}
               </div>
 
-              {/* Subscription Invoices & Billing History */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-base font-bold text-neutral-900">Billing History & Invoices</h4>
-                    <p className="text-xs text-neutral-500">
-                      Your platform subscription transactions, receipts and verification statuses.
-                    </p>
-                  </div>
-                </div>
-
-                {history.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-xs text-neutral-500">
-                    No payment transactions yet. When you upgrade your plan via UPI, your payment receipts and status will show here.
-                  </div>
-                ) : (
-                  <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 overflow-hidden">
-                    {history.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white hover:bg-neutral-50/50 transition-colors"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-neutral-900">{item.planName}</span>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                item.status === "verified"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : item.status === "pending_verification"
-                                  ? "bg-amber-100 text-amber-800 animate-pulse"
-                                  : "bg-neutral-100 text-neutral-600"
-                              }`}
-                            >
-                              {item.status === "verified"
-                                ? "Active / Verified"
-                                : item.status === "pending_verification"
-                                ? "Verifying (1–2 hrs)"
-                                : "Cancelled"}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-500 font-mono">
-                            <span>Ref: {item.referenceId}</span>
-                            {item.paymentUtr && <span>UTR: {item.paymentUtr}</span>}
-                            <span>{new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                          <span className="font-bold text-sm text-neutral-900 font-mono">{item.amountFormatted}</span>
-                          {item.status === "pending_verification" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSubscriptionModalPlanId(item.planId);
-                                setIsSubscriptionModalOpen(true);
-                              }}
-                              className="text-xs font-semibold text-neutral-700 hover:text-black underline cursor-pointer"
-                            >
-                              Check Status
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           );
         })()}
@@ -6144,8 +6123,8 @@ function DashboardPageContent() {
               <LockedFeature
                 title="Email notifications"
                 text="Connect your Gmail and tell subscribers the moment you add something new."
-                planLabel={`Pro plan · ${PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]}/mo`}
-                ctaLabel="Unlock with Pro"
+                planLabel={unlockLabel("email")}
+                ctaLabel={`Unlock with ${cheapestPlanWith("email")?.name ?? "an upgrade"}`}
                 onUpgrade={() => { setActiveTab("billing"); window.scrollTo({ top: 0 }); }}
                 perks={[
                   { icon: Mail, title: "Sent from your Gmail", text: "Emails come from you, not a no-reply address" },
@@ -6857,6 +6836,7 @@ function DashboardPageContent() {
           onClose={() => setIsSubscriptionModalOpen(false)}
           store={store}
           initialPlanId={subscriptionModalPlanId}
+          initialBillingCycle={subscriptionModalBillingCycle}
           onSuccess={() => {
             refreshStore();
           }}

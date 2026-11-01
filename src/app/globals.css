@@ -1028,3 +1028,19 @@ html:has(.home-sans)::-webkit-scrollbar {
     animation-range: 0 max(calc(100svh - 68px), 600px);
   }
 }
+
+/* Admin: same monochrome pass as the seller dashboard (via .dash). Decorative blues, purples and
+   pinks are muted to greys; green, amber and red keep their meaning (live, waiting, danger). */
+.admin :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-purple-600, .text-purple-700, .text-purple-800,
+  .text-indigo-600, .text-indigo-700, .text-pink-600, .text-violet-600, .text-sky-600, .text-cyan-600, .text-teal-600) {
+  color: #404040;
+}
+.admin :is(.bg-blue-50, .bg-purple-50, .bg-indigo-50, .bg-pink-50, .bg-violet-50, .bg-sky-50, .bg-cyan-50, .bg-teal-50) {
+  background-color: #f5f5f5;
+}
+.admin :is(.border-blue-200, .border-purple-200, .border-indigo-200, .border-pink-200, .border-blue-200\/60, .border-purple-200\/60) {
+  border-color: #e5e5e5;
+}
+.admin :is(.bg-blue-600, .bg-purple-600, .bg-indigo-600) {
+  background-color: #0a0a0a;
+}

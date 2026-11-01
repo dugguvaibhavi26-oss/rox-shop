@@ -20,6 +20,7 @@ import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { PlatformBannersManager } from "@/components/admin/platform-banners-manager";
 import { PlatformTemplatesManager } from "@/components/admin/platform-templates-manager";
+import { PlanAccessManager } from "@/components/admin/plan-access-manager";
 import {
   ShieldAlert,
   Users,
@@ -77,7 +78,7 @@ export default function AdminPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] text-neutral-900">
+        <div className="dash home-sans admin min-h-screen flex items-center justify-center bg-[#FAFAFA] text-neutral-950">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-neutral-900 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs text-neutral-500 font-mono">Authenticating Lead Dashboard...</p>
@@ -533,7 +534,7 @@ function AdminDashboardContent() {
   // PASSCODE LOCK SCREEN (CLEAN LIGHT THEME)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F1F5F9] text-neutral-900 flex items-center justify-center p-4">
+      <div className="dash home-sans admin min-h-screen bg-[#FAFAFA] text-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white border border-neutral-200 rounded-2xl p-8 shadow-xl space-y-6">
           <div className="text-center space-y-2">
             <div className="w-12 h-12 rounded-xl bg-neutral-100 border border-neutral-200 text-neutral-900 flex items-center justify-center mx-auto shadow-xs">
@@ -608,59 +609,33 @@ function AdminDashboardContent() {
     const storeGMV = storeOrders.reduce((acc, o) => acc + o.total, 0);
 
     return (
-      <div className="min-h-screen bg-[#F8FAFC] text-neutral-900 flex flex-col font-sans">
+      <div className="dash home-sans admin min-h-screen bg-[#FAFAFA] text-neutral-950 flex flex-col">
         {/* Top Header */}
-        <header className="border-b border-neutral-200 bg-white/95 backdrop-blur-md sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[64px] py-2.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-              <button
-                onClick={() => {
-                  setViewingSellerSubdomain(null);
-                  router.push("/admin");
-                }}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded-lg transition-colors border border-neutral-200/60 shrink-0 whitespace-nowrap"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>All Merchants</span>
-              </button>
-
-              <div className="h-4 w-px bg-neutral-200 hidden sm:block shrink-0" />
-
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="font-bold text-sm text-neutral-900 whitespace-nowrap">{viewingStore.name}</span>
-                <span className="text-[11px] font-mono text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded whitespace-nowrap">
-                  {getStoreDomain(viewingStore.subdomain)}
-                </span>
-                <Badge
-                  variant="neutral"
-                  className={`text-[10px] uppercase font-bold shrink-0 whitespace-nowrap ${
-                    viewingStore.planId === "pro"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : viewingStore.planId === "starter"
-                      ? "bg-amber-50 text-amber-700 border-amber-200"
-                      : "bg-neutral-100 text-neutral-700"
-                  }`}
-                >
-                  {viewingStore.planId} Tier
-                </Badge>
-              </div>
+        <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/90 backdrop-blur-md">
+          <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => {
+                setViewingSellerSubdomain(null);
+                router.push("/admin");
+              }}
+              aria-label="Back to merchants"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:border-neutral-900 hover:text-black"
+            >
+              <ArrowLeft className="h-[18px] w-[18px]" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-base font-semibold leading-tight">{viewingStore.name}</span>
+              <span className="block truncate text-xs text-neutral-500">{getStoreDomain(viewingStore.subdomain)}</span>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Link href={getStoreUrl(viewingStore.subdomain)} target="_blank" className="shrink-0">
-                <Button size="sm" variant="outline" className="text-xs h-8 whitespace-nowrap bg-white border-neutral-300">
-                  <span>Storefront</span>
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
-
-              <Link href={`/dashboard?store=${viewingStore.subdomain}`} target="_blank" className="shrink-0">
-                <Button size="sm" className="bg-neutral-900 hover:bg-black text-white text-xs h-8 whitespace-nowrap">
-                  <span>Open Dashboard</span>
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
-            </div>
+            <Link
+              href={getStoreUrl(viewingStore.subdomain)}
+              target="_blank"
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+            >
+              <span className="hidden sm:inline">Storefront</span>
+              <ExternalLink className="h-4 w-4" />
+            </Link>
           </div>
         </header>
 
@@ -788,97 +763,97 @@ function AdminDashboardContent() {
             </div>
 
             {/* Individual Seller Store Metrics Row (Detailed History & Values) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200">
-                <span className="text-xs text-neutral-500 font-medium">Total Store Sales (GMV)</span>
-                <div className="text-xl sm:text-2xl font-black text-neutral-900 mt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 rounded-2xl bg-neutral-950 text-white">
+                <span className="text-xs text-neutral-400">Sales</span>
+                <div className="text-xl sm:text-2xl font-semibold mt-1 tabular-nums">
                   {formatINR(storeGMV)}
                 </div>
-                <span className="text-[11px] text-neutral-500 mt-0.5 block">
-                  From {storeOrders.length} customer orders
+                <span className="text-[11px] text-neutral-400 mt-0.5 block">
+                  {storeOrders.length} order{storeOrders.length === 1 ? "" : "s"}
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200">
-                <span className="text-xs text-neutral-500 font-medium">Catalog Products</span>
+              <div className="p-4 rounded-2xl bg-white border border-neutral-200">
+                <span className="text-xs text-neutral-500">Products</span>
                 <div className="text-xl sm:text-2xl font-black text-neutral-900 mt-1">
                   {storeProducts.length}
                 </div>
                 <span className="text-[11px] text-neutral-500 mt-0.5 block">
-                  Quota limit: {PLATFORM_PLANS[viewingStore.planId]?.maxProducts >= 9999 ? "Unlimited" : PLATFORM_PLANS[viewingStore.planId]?.maxProducts}
+                  of {PLATFORM_PLANS[viewingStore.planId]?.maxProducts >= 9999 ? "unlimited" : PLATFORM_PLANS[viewingStore.planId]?.maxProducts} on {PLATFORM_PLANS[viewingStore.planId]?.name || "Free"}
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200">
-                <span className="text-xs text-neutral-500 font-medium">Customer Contacts</span>
+              <div className="p-4 rounded-2xl bg-white border border-neutral-200">
+                <span className="text-xs text-neutral-500">Customers</span>
                 <div className="text-xl sm:text-2xl font-black text-neutral-900 mt-1">
                   {storeCustomers.length}
                 </div>
                 <span className="text-[11px] text-neutral-500 mt-0.5 block">
-                  Unique buyer phone/email leads
+                  People who ordered
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200">
-                <span className="text-xs text-neutral-500 font-medium">Email Subscribers</span>
+              <div className="p-4 rounded-2xl bg-white border border-neutral-200">
+                <span className="text-xs text-neutral-500">Subscribers</span>
                 <div className="text-xl sm:text-2xl font-black text-neutral-900 mt-1">
                   {storeSubscribers.length}
                 </div>
                 <span className="text-[11px] text-neutral-500 mt-0.5 block">
-                  Newsletter & drop opt-ins
+                  Newsletter sign-ups
                 </span>
               </div>
             </div>
           </div>
 
           {/* Seller Profile Navigation Tabs */}
-          <div className="flex border-b border-neutral-200 gap-4 text-xs font-semibold">
+          <div className="no-scrollbar flex gap-5 overflow-x-auto border-b border-neutral-200 text-sm font-medium">
             <button
               onClick={() => setSellerProfileTab("orders")}
-              className={`pb-3 px-1 border-b-2 transition-all flex items-center gap-1.5 ${
+              className={`pb-3 px-1 border-b-2 transition-all flex shrink-0 items-center gap-1.5 whitespace-nowrap ${
                 sellerProfileTab === "orders"
                   ? "border-neutral-900 text-neutral-900 font-bold"
                   : "border-transparent text-neutral-500 hover:text-neutral-800"
               }`}
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Full Orders History ({storeOrders.length})</span>
+              <span>Orders ({storeOrders.length})</span>
             </button>
 
             <button
               onClick={() => setSellerProfileTab("products")}
-              className={`pb-3 px-1 border-b-2 transition-all flex items-center gap-1.5 ${
+              className={`pb-3 px-1 border-b-2 transition-all flex shrink-0 items-center gap-1.5 whitespace-nowrap ${
                 sellerProfileTab === "products"
                   ? "border-neutral-900 text-neutral-900 font-bold"
                   : "border-transparent text-neutral-500 hover:text-neutral-800"
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Product Catalog ({storeProducts.length})</span>
+              <span>Products ({storeProducts.length})</span>
             </button>
 
             <button
               onClick={() => setSellerProfileTab("customers")}
-              className={`pb-3 px-1 border-b-2 transition-all flex items-center gap-1.5 ${
+              className={`pb-3 px-1 border-b-2 transition-all flex shrink-0 items-center gap-1.5 whitespace-nowrap ${
                 sellerProfileTab === "customers"
                   ? "border-neutral-900 text-neutral-900 font-bold"
                   : "border-transparent text-neutral-500 hover:text-neutral-800"
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Buyers & Subscribers ({storeCustomers.length + storeSubscribers.length})</span>
+              <span>Customers ({storeCustomers.length + storeSubscribers.length})</span>
             </button>
 
             <button
               onClick={() => setSellerProfileTab("settings")}
-              className={`pb-3 px-1 border-b-2 transition-all flex items-center gap-1.5 ${
+              className={`pb-3 px-1 border-b-2 transition-all flex shrink-0 items-center gap-1.5 whitespace-nowrap ${
                 sellerProfileTab === "settings"
                   ? "border-neutral-900 text-neutral-900 font-bold"
                   : "border-transparent text-neutral-500 hover:text-neutral-800"
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>Store Configuration & Brand</span>
+              <span>Settings</span>
             </button>
           </div>
 
@@ -1196,7 +1171,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm text-neutral-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-blue-600" />
-                    <span>Customer Buyers Directory</span>
+                    <span>Customers</span>
                   </h3>
                   <span className="text-xs text-neutral-500">{storeCustomers.length} Buyers</span>
                 </div>
@@ -1231,7 +1206,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm text-neutral-900 flex items-center gap-2">
                     <Mail className="w-4 h-4 text-emerald-600" />
-                    <span>Store Drop Subscribers</span>
+                    <span>Newsletter subscribers</span>
                   </h3>
                   <span className="text-xs text-neutral-500">{storeSubscribers.length} Subscribers</span>
                 </div>
@@ -1260,7 +1235,7 @@ function AdminDashboardContent() {
           {/* TAB 4: STORE SETTINGS & BRAND SETUP */}
           {sellerProfileTab === "settings" && (
             <div className="bg-white border border-neutral-200 rounded-xl p-6 shadow-xs space-y-6">
-              <h3 className="font-bold text-sm text-neutral-900">Store Configuration & Architecture</h3>
+              <h3 className="font-bold text-sm text-neutral-900">Store settings</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 space-y-2">
@@ -1338,367 +1313,202 @@ function AdminDashboardContent() {
     );
   }
 
-  // MAIN PARENT DASHBOARD VIEW (PURE LIGHT THEME)
+  // MAIN PARENT DASHBOARD VIEW
+  const pendingPaymentCount = stores.filter((s) => s.pendingSubscription).length;
+  const adminNav: {
+    id: "overview" | "users" | "subscriptions" | "broadcasts" | "banners" | "templates" | "health";
+    label: string;
+    /** shorter name for the phone grid */
+    short?: string;
+    icon: React.ElementType;
+    badge?: number;
+    alert?: boolean;
+  }[] = [
+    { id: "overview", label: "Overview", icon: TrendingUp },
+    { id: "users", label: "Merchants", icon: Store, badge: stats.totalStores },
+    { id: "subscriptions", label: "Plans & payments", short: "Plans", icon: CreditCard, badge: pendingPaymentCount || undefined, alert: pendingPaymentCount > 0 },
+    { id: "broadcasts", label: "Announcements", short: "Announce", icon: Send },
+    { id: "banners", label: "App banners", icon: ImageIcon },
+    { id: "templates", label: "Templates", icon: Layers },
+    { id: "health", label: "System status", short: "Status", icon: Activity },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-neutral-900 flex flex-col font-sans">
-      {/* Top Lead Command Bar (Clean Light) */}
-      <header className="border-b border-neutral-200 bg-white/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[64px] py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="shrink-0">
-              <div className="flex items-center gap-2">
-                <ShopperLogo className="text-[18px] text-neutral-900" />
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-neutral-900 text-white leading-tight">
-                  Lead Admin
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-500 font-medium leading-tight mt-0.5 whitespace-nowrap">
-                Multi-Tenant Operations Console
-              </p>
-            </div>
+    <div className="dash home-sans admin min-h-screen bg-[#FAFAFA] text-neutral-950">
+      {/* Top bar */}
+      <header className="fixed top-0 inset-x-0 z-40 h-16 border-b border-neutral-200 bg-white/90 backdrop-blur-md">
+        <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <ShopperLogo className="text-[19px] text-neutral-950" />
+            <span className="rounded-full bg-neutral-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">Admin</span>
           </div>
-
-          {/* Top Tabs (Clean Light Theme) */}
-          <nav className="hidden lg:flex items-center gap-1 bg-neutral-100/90 p-1 rounded-xl text-xs font-medium border border-neutral-200/80 shrink-0">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "overview"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Overview</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "users"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Merchants ({stats.totalStores})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("subscriptions")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "subscriptions"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>Plans & MRR</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("broadcasts")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "broadcasts"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <Send className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-              <span>Broadcast Alerts</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("banners")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "banners"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <ImageIcon className="w-3.5 h-3.5 text-pink-600 shrink-0" />
-              <span>Banners</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("templates")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "templates"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span>Templates</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("health")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs ${
-                activeTab === "health"
-                  ? "bg-white text-neutral-900 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/60"
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-              <span>Cloud Health</span>
-            </button>
-          </nav>
-
-          {/* Right Action Tools */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-full font-medium whitespace-nowrap shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              Live Sync
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live
             </span>
-
-            <button
-              onClick={handleLockDashboard}
-              title="Lock Master Dashboard"
-              className="p-2 rounded-lg bg-white border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-colors shadow-2xs shrink-0"
+            <Link
+              href="/"
+              target="_blank"
+              className="hidden sm:inline-flex h-10 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
             >
-              <Lock className="w-4 h-4" />
-            </button>
-
-            <Link href="/" target="_blank" className="shrink-0">
-              <Button size="sm" variant="outline" className="text-xs h-8 bg-white border-neutral-300 hover:bg-neutral-50 shadow-2xs font-semibold whitespace-nowrap">
-                <span>View Site</span>
-                <ExternalLink className="w-3.5 h-3.5 ml-1" />
-              </Button>
+              View site
+              <ExternalLink className="h-3.5 w-3.5" />
             </Link>
+            <button
+              type="button"
+              onClick={handleLockDashboard}
+              aria-label="Lock admin"
+              title="Lock admin"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:border-neutral-900 hover:text-black"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full space-y-8">
-        {/* Mobile Navigation Pills */}
-        <div className="flex lg:hidden overflow-x-auto gap-2 pb-2 scrollbar-none text-xs">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "overview" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "users" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Merchants ({stats.totalStores})
-          </button>
-          <button
-            onClick={() => setActiveTab("subscriptions")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "subscriptions" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Plans & Subscriptions
-          </button>
-          <button
-            onClick={() => setActiveTab("broadcasts")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "broadcasts" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Alerts & Gmail
-          </button>
-          <button
-            onClick={() => setActiveTab("banners")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "banners" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Banners
-          </button>
-          <button
-            onClick={() => setActiveTab("templates")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "templates" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Templates
-          </button>
-          <button
-            onClick={() => setActiveTab("health")}
-            className={`px-3 py-1.5 rounded-md whitespace-nowrap ${
-              activeTab === "health" ? "bg-neutral-900 text-white font-bold" : "bg-white border text-neutral-700"
-            }`}
-          >
-            Cloud Sync
-          </button>
+      {/* Sidebar (desktop) */}
+      <aside className="hidden lg:flex fixed top-16 bottom-0 left-0 z-30 w-64 flex-col border-r border-neutral-200 bg-white px-3 py-5">
+        <nav className="space-y-1">
+          {adminNav.map((item) => {
+            const Icon = item.icon;
+            const on = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  on ? "bg-neutral-950 text-white" : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
+                }`}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <span className="flex-1 text-left">{item.label}</span>
+                {item.badge ? (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+                      item.alert ? "bg-amber-400 text-neutral-950" : on ? "bg-white/15 text-white" : "bg-neutral-100 text-neutral-600"
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="mt-auto rounded-2xl bg-neutral-50 p-4 text-xs text-neutral-500">
+          <span className="block font-semibold text-neutral-900">{stats.totalStores} stores</span>
+          {stats.proStores + stats.starterStores} on paid plans · ₹{stats.mrr.toLocaleString("en-IN")}/mo
+        </div>
+      </aside>
+
+      <div className="pt-16 lg:pl-64">
+        {/* Section tabs (phones and tablets): a grid, three per row */}
+        <div className="lg:hidden border-b border-neutral-200 bg-[#FAFAFA]">
+          <div className="grid grid-cols-3 gap-2 px-4 py-3 sm:grid-cols-4">
+            {adminNav.map((item) => {
+              const on = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  style={{ minHeight: 0 }}
+                  className={`inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-medium transition-colors ${
+                    on ? "bg-neutral-950 text-white" : "border border-neutral-200 bg-white text-neutral-700"
+                  }`}
+                >
+                  <span className="truncate">{item.short || item.label}</span>
+                  {item.badge && item.alert ? (
+                    <span className="rounded-full bg-amber-400 px-1.5 text-[11px] font-semibold text-neutral-950">{item.badge}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
+      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
         {/* 1. OVERVIEW (CLEAN LIGHT THEME - EXECUTIVE PLATFORM OPERATIONS & ANALYTICS) */}
         {activeTab === "overview" && (
           <div className="space-y-6">
             {/* Executive Operations Header & Quick Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-neutral-200/80">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900">
-                    Product & Merchant Operations Command
-                  </h2>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    System Live
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-500 mt-1">
-                  High-level operational metrics, recurring subscription revenue, category dispersion, and tenant feature readiness.
-                </p>
+                <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">Overview</h2>
+                <p className="mt-1 text-sm text-neutral-500">How the platform is doing today.</p>
               </div>
 
               {/* Quick Admin Action Toolbar */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setActiveTab("broadcasts")}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-black text-white transition-colors shadow-2xs whitespace-nowrap"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-black whitespace-nowrap"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Broadcast Alert</span>
+                  <Send className="w-4 h-4" />
+                  <span>Announce</span>
                 </button>
                 <button
                   onClick={handleExportCSV}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition-colors shadow-2xs whitespace-nowrap"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-800 hover:border-neutral-900 whitespace-nowrap"
                 >
-                  <Download className="w-3.5 h-3.5 text-neutral-500" />
+                  <Download className="w-4 h-4" />
                   <span>Export CSV</span>
                 </button>
                 <button
                   onClick={refreshData}
-                  title="Sync Platform Data"
-                  className="p-1.5 rounded-lg bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors"
+                  title="Refresh"
+                  aria-label="Refresh"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:border-neutral-900"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* 4 Elevated Executive Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Card 1: Registered Boutiques */}
-              <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-500 mb-3">
-                    <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                      Registered Boutiques
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-800">
-                      <Store className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-neutral-900">{stats.totalStores}</span>
-                    <span className="text-xs font-bold text-neutral-500 font-mono">Tenants</span>
-                  </div>
-                </div>
-                <div className="pt-3 mt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
-                  <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
-                    <CheckCircle className="w-3 h-3 text-emerald-600" /> {stats.activeStores} Published
+            {pendingPaymentCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("subscriptions")}
+                className="flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left hover:border-amber-300"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-neutral-950">
+                  <Clock className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-neutral-950">
+                    {pendingPaymentCount} payment{pendingPaymentCount === 1 ? "" : "s"} waiting for approval
                   </span>
-                  <span className="text-neutral-500">{stats.suspendedStores} Paused</span>
-                </div>
-              </div>
+                  <span className="block text-xs text-neutral-600">Check the UTR, then approve to unlock the plan.</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-neutral-700" />
+              </button>
+            )}
 
-              {/* Card 2: Platform Monthly Run-Rate (MRR) */}
-              <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-500 mb-3">
-                    <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                      Platform MRR
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700 border border-amber-200/60">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="col-span-2 lg:col-span-1 relative overflow-hidden rounded-2xl bg-neutral-950 p-5 text-white">
+                <span className="text-xs text-neutral-400">Monthly revenue</span>
+                <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">₹{stats.mrr.toLocaleString("en-IN")}</p>
+                <p className="mt-3 text-xs text-neutral-400">
+                  {stats.proStores + stats.starterStores} paid stores · ₹{(stats.mrr * 12).toLocaleString("en-IN")} a year
+                </p>
+              </div>
+              {[
+                { label: "Stores", value: stats.totalStores, note: `${stats.activeStores} live · ${stats.suspendedStores} paused`, icon: Store },
+                { label: "Products", value: stats.totalProducts, note: `~${stats.totalStores ? (stats.totalProducts / stats.totalStores).toFixed(1) : 0} per store`, icon: Package },
+                { label: "Buyers", value: stats.totalCustomers + stats.totalSubscribers, note: `${stats.totalCustomers} customers · ${stats.totalSubscribers} subscribers`, icon: Users },
+              ].map((t, i) => (
+                <div key={t.label} className={`rounded-2xl border border-neutral-200 bg-white p-5 ${i === 2 ? "col-span-2 lg:col-span-1" : ""}`}>
+                  <div className="flex items-center justify-between text-neutral-500">
+                    <span className="text-xs">{t.label}</span>
+                    <t.icon className="h-4 w-4" />
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-neutral-900">
-                      ₹{stats.mrr.toLocaleString("en-IN")}
-                    </span>
-                    <span className="text-xs font-bold text-amber-700 font-mono">/month</span>
-                  </div>
+                  <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-neutral-950">{t.value}</p>
+                  <p className="mt-3 truncate text-xs text-neutral-500">{t.note}</p>
                 </div>
-                <div className="pt-3 mt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
-                  <span className="text-amber-800 font-bold">
-                    {stats.proStores + stats.starterStores} Paid Subscriptions
-                  </span>
-                  <span className="text-neutral-500 font-mono">
-                    ₹{(stats.mrr * 12).toLocaleString("en-IN")} ARR
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 3: Global Catalog Footprint */}
-              <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-500 mb-3">
-                    <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                      Catalog Products
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-700 border border-purple-200/60">
-                      <Package className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-neutral-900">{stats.totalProducts}</span>
-                    <span className="text-xs font-bold text-purple-700 font-mono">Live SKUs</span>
-                  </div>
-                </div>
-                <div className="pt-3 mt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
-                  <span className="text-neutral-600">
-                    ~{stats.totalStores ? (stats.totalProducts / stats.totalStores).toFixed(1) : 0} items / boutique
-                  </span>
-                  <span className="text-purple-700 font-semibold">{categoryStats.length} Sectors</span>
-                </div>
-              </div>
-
-              {/* Card 4: Buyer & Audience Reach */}
-              <div className="p-5 rounded-2xl bg-white border border-neutral-200/80 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-500 mb-3">
-                    <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                      Network Audience
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 border border-blue-200/60">
-                      <Users className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-neutral-900">
-                      {stats.totalCustomers + stats.totalSubscribers}
-                    </span>
-                    <span className="text-xs font-bold text-blue-700 font-mono">Leads</span>
-                  </div>
-                </div>
-                <div className="pt-3 mt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
-                  <span className="text-blue-800 font-bold">{stats.totalCustomers} direct buyers</span>
-                  <span className="text-neutral-500">{stats.totalSubscribers} subscribers</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Platform Pulse Strip */}
-            <div className="p-3.5 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-neutral-500">Core Architecture:</span>
-                <span className="font-bold text-neutral-800">Multi-Tenant Store Engine (Zero Cold Start)</span>
-              </div>
-              <div className="h-3 w-px bg-neutral-200 hidden md:block" />
-              <div className="flex items-center gap-2">
-                <Server className="w-3.5 h-3.5 text-blue-600" />
-                <span className="text-neutral-500">Cloud Sync:</span>
-                <span className="font-bold text-neutral-800">Firebase Firestore Real-time</span>
-              </div>
-              <div className="h-3 w-px bg-neutral-200 hidden md:block" />
-              <div className="flex items-center gap-2">
-                <QrCode className="w-3.5 h-3.5 text-amber-600" />
-                <span className="text-neutral-500">Checkout Gateways:</span>
-                <span className="font-bold text-neutral-800">0% Cut Direct UPI QR + COD</span>
-              </div>
-              <div className="h-3 w-px bg-neutral-200 hidden md:block" />
-              <div className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-purple-600" />
-                <span className="text-neutral-500">Broadcast Gateway:</span>
-                <span className="font-bold text-neutral-800">Integrated Gmail Dispatcher</span>
-              </div>
+              ))}
             </div>
 
             {/* 2x2 Balanced Executive Analytics Grid */}
@@ -1707,8 +1517,8 @@ function AdminDashboardContent() {
               <div className="p-6 rounded-2xl bg-white border border-neutral-200/80 shadow-xs space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-neutral-900">Subscription Monetization & Tiers</h3>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">Distribution of merchant recurring plans</p>
+                    <h3 className="text-sm font-bold text-neutral-900">Plans</h3>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">How stores are spread across plans</p>
                   </div>
                   <Badge variant="neutral" className="text-[10px] bg-emerald-50 text-emerald-800 border-emerald-200 font-bold">
                     {stats.totalStores ? Math.round(((stats.starterStores + stats.proStores) / stats.totalStores) * 100) : 0}% Paid
@@ -1813,8 +1623,8 @@ function AdminDashboardContent() {
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-neutral-700" />
                     <div>
-                      <h3 className="text-sm font-bold text-neutral-900">Merchant Industry Sectors</h3>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">Category distribution across active boutiques</p>
+                      <h3 className="text-sm font-bold text-neutral-900">What stores sell</h3>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">Stores by category</p>
                     </div>
                   </div>
                   <span className="text-[11px] text-neutral-600 bg-neutral-100 font-mono px-2 py-0.5 rounded font-bold">
@@ -1867,8 +1677,8 @@ function AdminDashboardContent() {
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-emerald-600" />
                     <div>
-                      <h3 className="text-sm font-bold text-neutral-900">Tenant Feature Adoption</h3>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">Readiness and setup across registered stores</p>
+                      <h3 className="text-sm font-bold text-neutral-900">Feature use</h3>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">How many stores have set up each feature</p>
                     </div>
                   </div>
                   <Badge variant="neutral" className="text-[10px] bg-neutral-100 text-neutral-700">
@@ -1964,8 +1774,8 @@ function AdminDashboardContent() {
               <div className="p-6 rounded-2xl bg-white border border-neutral-200/80 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-neutral-900">Boutique Directory Fast Access</h3>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">Quick access to individual merchant profiles</p>
+                    <h3 className="text-sm font-bold text-neutral-900">Recent stores</h3>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">Open a store's profile</p>
                   </div>
                   <button
                     onClick={() => setActiveTab("users")}
@@ -2039,12 +1849,8 @@ function AdminDashboardContent() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-neutral-900">
-                  Merchants & Store Owners Directory
-                </h2>
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  Click on any seller to open their complete store history, customer orders, and catalog.
-                </p>
+                <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">Merchants</h2>
+                <p className="mt-1 text-sm text-neutral-500">Every store on the platform. Open one to see its orders, products and settings.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -2119,18 +1925,111 @@ function AdminDashboardContent() {
               </div>
             </div>
 
-            {/* Tenants Table (Light Theme) */}
-            <div className="rounded-xl bg-white border border-neutral-200 overflow-hidden shadow-xs">
+            {/* Phones: one card per store */}
+            <div className="md:hidden space-y-3">
+              {filteredStores.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-500">
+                  No stores match these filters.
+                </div>
+              )}
+              {filteredStores.map((s) => {
+                const live = s.status === "published" && !s.isPaused;
+                const openProfile = () => {
+                  setViewingSellerSubdomain(s.subdomain);
+                  setSellerProfileTab("orders");
+                };
+                return (
+                  <div key={s.subdomain} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <button type="button" onClick={openProfile} className="min-w-0 text-left" style={{ minHeight: 0 }}>
+                        <span className="block truncate text-sm font-semibold text-neutral-950">{s.name}</span>
+                        <span className="block truncate text-xs text-neutral-500">{getStoreDomain(s.subdomain)}</span>
+                      </button>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          live ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-neutral-400"}`} />
+                        {live ? "Live" : "Paused"}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="min-w-0">
+                        <span className="block text-neutral-500">Owner</span>
+                        <span className="block truncate font-medium text-neutral-900">{s.ownerName || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="block text-neutral-500">Plan</span>
+                        <span className="block font-medium text-neutral-900">{PLATFORM_PLANS[s.planId]?.name || s.planId}</span>
+                      </div>
+                      <div>
+                        <span className="block text-neutral-500">Products</span>
+                        <span className="block font-medium tabular-nums text-neutral-900">{s.products?.length || 0}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 border-t border-neutral-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={openProfile}
+                        style={{ minHeight: 0 }}
+                        className="h-9 flex-1 rounded-xl bg-neutral-950 text-xs font-semibold text-white hover:bg-black"
+                      >
+                        View profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStore(s);
+                          setTargetPlan(s.planId);
+                          setIsPlanModalOpen(true);
+                        }}
+                        style={{ minHeight: 0 }}
+                        className="h-9 rounded-xl border border-neutral-200 px-3 text-xs font-semibold text-neutral-800 hover:border-neutral-900"
+                      >
+                        Plan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStore(s);
+                          setIsStatusModalOpen(true);
+                        }}
+                        style={{ minHeight: 0 }}
+                        className="h-9 rounded-xl border border-neutral-200 px-3 text-xs font-semibold text-neutral-800 hover:border-neutral-900"
+                      >
+                        {live ? "Pause" : "Activate"}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${s.name}`}
+                        onClick={() => {
+                          setSelectedStore(s);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        style={{ minHeight: 0 }}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 text-neutral-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tablets and desktop: table */}
+            <div className="hidden md:block rounded-2xl bg-white border border-neutral-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-neutral-50 text-neutral-500 border-b border-neutral-200 font-semibold uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="py-3 px-4">Store & Subdomain</th>
-                      <th className="py-3 px-4">Merchant / Owner</th>
-                      <th className="py-3 px-4">Plan Tier</th>
+                      <th className="py-3 px-4">Store</th>
+                      <th className="py-3 px-4">Owner</th>
+                      <th className="py-3 px-4">Plan</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4">Products</th>
-                      <th className="py-3 px-4 text-right">Lead Actions</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
@@ -2241,19 +2140,6 @@ function AdminDashboardContent() {
                               <span>View Profile</span>
                             </Button>
 
-                            {/* Impersonate Seller */}
-                            <Link href={`/dashboard?store=${s.subdomain}`} target="_blank">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[11px] bg-white border-neutral-300 text-neutral-700 hover:bg-neutral-50"
-                                title="Open Seller Dashboard"
-                              >
-                                <span>Dashboard</span>
-                                <ExternalLink className="w-3 h-3 ml-1" />
-                              </Button>
-                            </Link>
-
                             {/* WhatsApp Direct Contact */}
                             {s.contactPhone && (
                               <a
@@ -2308,13 +2194,85 @@ function AdminDashboardContent() {
         {activeTab === "subscriptions" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-neutral-900">
-                Subscriptions & MRR Management
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Monitor recurring revenues, subscriber tiers, and manually grant subscription overrides.
-              </p>
+              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">Plans & payments</h2>
+              <p className="mt-1 text-sm text-neutral-500">Approve payments, choose what each plan unlocks, and track revenue.</p>
             </div>
+
+            {/* Payment approvals: a seller's paid plan switches on only when approved here */}
+            {(() => {
+              const pending = stores.filter((s) => s.pendingSubscription).map((s) => ({ s, req: s.pendingSubscription! }));
+              return (
+                <div className="p-6 rounded-xl bg-white border border-amber-200 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span>Payment approvals</span>
+                      </h3>
+                      <p className="text-xs text-neutral-500 mt-0.5">Check the UTR in your bank or UPI app, then approve to unlock the plan.</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{pending.length} waiting</span>
+                  </div>
+                  {pending.length === 0 ? (
+                    <p className="text-xs text-neutral-500">No payments waiting for approval.</p>
+                  ) : (
+                    <div className="divide-y divide-neutral-100">
+                      {pending.map(({ s, req }) => (
+                        <div key={req.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="min-w-0 space-y-0.5 text-xs text-neutral-700">
+                            <p className="text-sm font-bold text-neutral-900">
+                              {s.name} <span className="font-mono text-[11px] font-normal text-neutral-400">{s.subdomain}</span>
+                            </p>
+                            <p>
+                              {req.planName} · {req.billingCycle} · <span className="font-bold">{req.amountFormatted}</span>
+                            </p>
+                            <p className="font-mono text-[11px] text-neutral-500">
+                              Ref {req.referenceId} · UTR {req.paymentUtr || "not given"}
+                            </p>
+                            <p className="text-[11px] text-neutral-400">Submitted {new Date(req.createdAt).toLocaleString("en-IN")}</p>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => {
+                                const reason = window.prompt("Why is it rejected? The seller will see this.", "We couldn't find this payment in our account.");
+                                if (reason === null) return;
+                                storeService.rejectSubscriptionPayment(s.subdomain, reason);
+                                refreshData();
+                              }}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="text-xs bg-emerald-600 text-white hover:bg-emerald-700"
+                              onClick={() => {
+                                if (!window.confirm(`Approve ${req.amountFormatted} from ${s.name} and switch them to ${req.planName}?`)) return;
+                                storeService.verifySubscriptionPayment(s.subdomain, req.id);
+                                refreshData();
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* What each plan unlocks (applies to every store on that plan) */}
+            <PlanAccessManager
+              storesByPlan={{
+                free: stores.filter((s) => (s.planId || "free") === "free").length,
+                starter: stores.filter((s) => s.planId === "starter").length,
+                pro: stores.filter((s) => s.planId === "pro").length,
+              }}
+            />
 
             {/* Plan Tier Breakdown Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2323,7 +2281,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-neutral-900 text-base">Free Plan</h3>
-                    <p className="text-xs text-neutral-500">Default self-serve starter</p>
+                    <p className="text-xs text-neutral-500">Start selling for free</p>
                   </div>
                   <span className="text-xl font-black text-neutral-900">₹0</span>
                 </div>
@@ -2343,7 +2301,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-neutral-900 text-base">Growth</h3>
-                    <p className="text-xs text-neutral-500">Growing boutique brands</p>
+                    <p className="text-xs text-neutral-500">Coupons, reviews and more products</p>
                   </div>
                   <span className="text-xl font-black text-amber-700">{PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo</span>
                 </div>
@@ -2365,7 +2323,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-neutral-900 text-base">Pro</h3>
-                    <p className="text-xs text-neutral-500">High-volume established brands</p>
+                    <p className="text-xs text-neutral-500">Everything, on their own domain</p>
                   </div>
                   <span className="text-xl font-black text-emerald-700">{PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]}/mo</span>
                 </div>
@@ -2387,7 +2345,7 @@ function AdminDashboardContent() {
             <div className="p-6 rounded-xl bg-white border border-neutral-200 shadow-xs space-y-4">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-500" />
-                <span>Instant Subscription Override Tool (Lead VIP Upgrade)</span>
+                <span>Change a store's plan manually</span>
               </h3>
               <p className="text-xs text-neutral-500">
                 As the product lead, you can upgrade any registered store to Starter or Pro without requiring merchant payment.
@@ -2424,12 +2382,8 @@ function AdminDashboardContent() {
         {activeTab === "broadcasts" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-neutral-900">
-                Platform-Wide Alerts & Merchant Communications
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Dispatch official platform announcements, maintenance advisories, and feature updates directly to merchant inboxes and dashboards.
-              </p>
+              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">Announcements</h2>
+              <p className="mt-1 text-sm text-neutral-500">Send updates to every seller's dashboard and inbox.</p>
             </div>
 
             {broadcastSuccessToast && (
@@ -2450,15 +2404,12 @@ function AdminDashboardContent() {
                     <Send className="w-4 h-4 text-emerald-600" />
                     <span>Send Announcement</span>
                   </h3>
-                  <Badge variant="neutral" className="text-[10px] bg-neutral-100 text-neutral-700">
-                    Lead Authority
-                  </Badge>
                 </div>
 
                 {/* Pre-set Templates */}
                 <div>
                   <label className="text-[11px] font-semibold text-neutral-600 block mb-1.5">
-                    Pre-set Announcement Templates (1-Click Load)
+                    Quick templates
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {BROADCAST_TEMPLATES.map((tpl) => (
@@ -2476,7 +2427,7 @@ function AdminDashboardContent() {
 
                 <div>
                   <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                    Target Merchant Audience
+                    Send to
                   </label>
                   <select
                     value={broadcastTarget}
@@ -2492,7 +2443,7 @@ function AdminDashboardContent() {
 
                 <div className="flex items-center justify-between text-[11px] px-1 text-neutral-500">
                   <span>
-                    Valid Merchant Emails:{" "}
+                    Stores with an email:{" "}
                     <strong className="text-neutral-900 font-mono">{targetEmails.length}</strong>
                   </span>
                   <button
@@ -2501,13 +2452,13 @@ function AdminDashboardContent() {
                     className="text-neutral-900 hover:underline flex items-center gap-1 font-semibold"
                   >
                     {copiedEmailsToast ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedEmailsToast ? "Copied" : "Copy Recipient List"}</span>
+                    <span>{copiedEmailsToast ? "Copied" : "Copy emails"}</span>
                   </button>
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                    Subject Line *
+                    Subject *
                   </label>
                   <Input
                     placeholder="e.g. [Important] New Direct UPI Payments & Theme Update"
@@ -2520,7 +2471,7 @@ function AdminDashboardContent() {
 
                 <div>
                   <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                    Message Body (HTML or Plain Text) *
+                    Message *
                   </label>
                   <textarea
                     rows={5}
@@ -2535,7 +2486,7 @@ function AdminDashboardContent() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                      Action Button Text (Optional)
+                      Button text (optional)
                     </label>
                     <Input
                       placeholder="e.g. View New Features"
@@ -2546,7 +2497,7 @@ function AdminDashboardContent() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-neutral-700 block mb-1">
-                      Destination Link
+                      Button link
                     </label>
                     <Input
                       placeholder="e.g. /dashboard or https://..."
@@ -2566,12 +2517,12 @@ function AdminDashboardContent() {
                     {broadcastSending ? (
                       <div className="flex items-center gap-2">
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Transmitting Broadcast...</span>
+                        <span>Sending…</span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-1.5">
                         <Send className="w-3.5 h-3.5" />
-                        <span>Transmit In-App Notice</span>
+                        <span>Send announcement</span>
                       </div>
                     )}
                   </Button>
@@ -2594,7 +2545,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                     <Activity className="w-4 h-4 text-purple-600" />
-                    <span>Broadcast Transmission History</span>
+                    <span>Sent announcements</span>
                   </h3>
                   <span className="text-[11px] text-neutral-500 font-medium">
                     {broadcasts.length} Sent
@@ -2645,12 +2596,8 @@ function AdminDashboardContent() {
         {activeTab === "health" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-neutral-900">
-                Platform Cloud & Infrastructure Health
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Real-time connection status with Google Firebase Firestore backend (<code className="text-emerald-700">rox-shoppersite</code>).
-              </p>
+              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">System status</h2>
+              <p className="mt-1 text-sm text-neutral-500">Connection to the database and recent activity.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2658,7 +2605,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Server className="w-5 h-5 text-emerald-600" />
-                    <h3 className="font-bold text-neutral-900 text-sm">Firebase Cloud Status</h3>
+                    <h3 className="font-bold text-neutral-900 text-sm">Database connection</h3>
                   </div>
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-mono bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -2679,7 +2626,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Radio className="w-5 h-5 text-blue-600" />
-                    <h3 className="font-bold text-neutral-900 text-sm">Real-time Synchronizer</h3>
+                    <h3 className="font-bold text-neutral-900 text-sm">Live updates</h3>
                   </div>
                   <Button
                     size="sm"
@@ -2711,6 +2658,7 @@ function AdminDashboardContent() {
           </div>
         )}
       </main>
+      </div>
 
       {/* PLAN OVERRIDE MODAL (LIGHT THEME) */}
       <Modal
@@ -2783,7 +2731,7 @@ function AdminDashboardContent() {
                 }
               }}
             >
-              Confirm Plan Override
+              Change plan
             </Button>
           </div>
         </div>

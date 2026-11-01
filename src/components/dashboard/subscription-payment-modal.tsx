@@ -40,6 +40,23 @@ interface SubscriptionPaymentModalProps {
 
 type ModalStep = "review" | "payment" | "verifying";
 
+// The checkout lives in the URL (?checkout=pro&cycle=monthly&step=payment&ref=...) so a refresh
+// lands on the same plan, step and payment reference.
+const CHECKOUT_PARAMS = ["checkout", "upgrade", "cycle", "step", "ref"];
+
+function readParam(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get(key);
+}
+
+function writeCheckoutParams(values: Record<string, string> | null) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  CHECKOUT_PARAMS.forEach((k) => url.searchParams.delete(k));
+  if (values) Object.entries(values).forEach(([k, v]) => url.searchParams.set(k, v));
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url.href);
+}
+
 export function SubscriptionPaymentModal({
   isOpen,
   onClose,
@@ -52,8 +69,20 @@ export function SubscriptionPaymentModal({
 }: SubscriptionPaymentModalProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<"starter" | "pro">(initialPlanId);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialBillingCycle);
-  const [step, setStep] = useState<ModalStep>("review");
-  const [paymentUtr, setPaymentUtr] = useState("");
+  const [step, setStep] = useState<ModalStep>(() => (readParam("step") === "payment" ? "payment" : "review"));
+  // One payment reference per checkout, kept across re-renders and refreshes
+  const [generatedRef, setGeneratedRef] = useState(() => {
+    const fromUrl = readParam("ref");
+    return fromUrl && /^REF-SUB-\d{6}$/.test(fromUrl) ? fromUrl : `REF-SUB-${Math.floor(100000 + Math.random() * 900000)}`;
+  });
+  const utrKey = `shopersite_checkout_utr_${store.subdomain}`;
+  const [paymentUtr, setPaymentUtr] = useState(() => {
+    try {
+      return sessionStorage.getItem(utrKey) || "";
+    } catch {
+      return "";
+    }
+  });
   const [utrError, setUtrError] = useState("");
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
@@ -64,14 +93,39 @@ export function SubscriptionPaymentModal({
 
   // If there is already a pending subscription for this store, show the verifying step by default
   useEffect(() => {
+    if (!isOpen) return;
     if (store?.pendingSubscription) {
       setSubmittedRequest(store.pendingSubscription);
       setStep("verifying");
     } else {
+      setSubmittedRequest(null);
       setSelectedPlanId(initialPlanId);
-      setStep("review");
+      setBillingCycle(initialBillingCycle);
+      setStep((s) => (s === "verifying" ? "review" : s));
     }
-  }, [isOpen, store?.pendingSubscription, initialPlanId]);
+  }, [isOpen, store?.pendingSubscription, initialPlanId, initialBillingCycle]);
+
+  // Mirror the checkout into the URL so a refresh comes back to the same place
+  useEffect(() => {
+    if (!isOpen) return;
+    writeCheckoutParams({ checkout: selectedPlanId, cycle: billingCycle, step, ref: generatedRef });
+  }, [isOpen, selectedPlanId, billingCycle, step, generatedRef]);
+
+  useEffect(() => {
+    try {
+      if (paymentUtr) sessionStorage.setItem(utrKey, paymentUtr);
+      else sessionStorage.removeItem(utrKey);
+    } catch {
+      // storage unavailable (private mode); the UTR just isn't remembered
+    }
+  }, [paymentUtr, utrKey]);
+
+  const close = () => {
+    writeCheckoutParams(null);
+    setStep("review");
+    setGeneratedRef(`REF-SUB-${Math.floor(100000 + Math.random() * 900000)}`);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -83,7 +137,7 @@ export function SubscriptionPaymentModal({
 
   const platformUpiId = siteConfig.platformUpiId || "shopper.pay@okicici";
   const platformMerchant = siteConfig.platformMerchantName || "Shopper Platforms India";
-  const transactionRef = submittedRequest?.referenceId || `REF-SUB-${Math.floor(100000 + Math.random() * 900000)}`;
+  const transactionRef = submittedRequest?.referenceId || generatedRef;
   const transactionNote = `Sub ${currentPlan.name} - ${store.subdomain}`.slice(0, 48);
 
   // UPI deep link specification: &am=<fixed> locks the amount field in compliant UPI apps
@@ -133,6 +187,7 @@ export function SubscriptionPaymentModal({
     });
 
     setSubmittedRequest(req);
+    setPaymentUtr("");
     setStep("verifying");
     if (onSuccess) onSuccess();
   };
@@ -144,7 +199,7 @@ export function SubscriptionPaymentModal({
       setSimulatingVerification(false);
       if (res.success) {
         if (onSuccess) onSuccess();
-        onClose();
+        close();
       }
     }, 1200);
   };
@@ -159,38 +214,31 @@ export function SubscriptionPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div
-        className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl border border-neutral-200 transition-all text-neutral-900 my-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 text-white shadow-xs">
-              <Sparkles className="h-4 w-4 text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold tracking-tight">Upgrade Subscription</h2>
-              <p className="text-xs text-neutral-500">
-                For store: <span className="font-semibold text-neutral-800">{store.name}</span> (
-                <span className="font-mono text-[11px]">{store.subdomain}.{siteConfig.domain}</span>)
+    <div className="fixed inset-0 z-[70] flex flex-col bg-[#FAFAFA] text-neutral-900 animate-in fade-in duration-200">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Page header */}
+        <div className="shrink-0 border-b border-neutral-200 bg-white">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4 sm:px-6">
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Back to dashboard"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-neutral-200 bg-white text-neutral-700 transition-colors hover:border-neutral-900 hover:text-black"
+            >
+              <ArrowLeft className="h-[18px] w-[18px]" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold leading-tight tracking-tight">Upgrade your plan</h1>
+              <p className="truncate text-xs text-neutral-500">
+                {store.name} · {store.subdomain}.{siteConfig.domain}
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Step Progression Indicators */}
-        <div className="border-b border-neutral-100 bg-neutral-50/70 px-6 py-2.5">
-          <div className="flex items-center justify-between text-xs font-semibold">
+        <div className="shrink-0 border-b border-neutral-200 bg-white">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 text-xs font-semibold sm:px-6">
             <div
               className={`flex items-center gap-1.5 ${
                 step === "review" ? "text-neutral-950 font-bold" : "text-emerald-700"
@@ -250,8 +298,9 @@ export function SubscriptionPaymentModal({
           </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 max-h-[75vh] overflow-y-auto">
+        {/* Page body */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
           {/* STEP 1: REVIEW & PLAN SELECTION */}
           {step === "review" && (
             <div className="space-y-5 animate-in fade-in duration-150">
@@ -444,7 +493,8 @@ export function SubscriptionPaymentModal({
                 </div>
               </div>
 
-              {/* Proceed CTA */}
+              {/* Proceed CTA, pinned to the bottom so it's always reachable */}
+              <div className="sticky bottom-0 -mx-4 -mb-6 border-t border-neutral-200 bg-[#FAFAFA]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
               <button
                 type="button"
                 onClick={() => setStep("payment")}
@@ -453,6 +503,7 @@ export function SubscriptionPaymentModal({
                 <span>Proceed to UPI Payment (₹{amountRupees.toLocaleString("en-IN")})</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
+              </div>
             </div>
           )}
 
@@ -678,7 +729,7 @@ export function SubscriptionPaymentModal({
                   {/* Option 1: Setup store */}
                   <div
                     onClick={() => {
-                      onClose();
+                      close();
                       if (onOpenSetupWizard) onOpenSetupWizard();
                       else if (onNavigateTab) onNavigateTab("settings");
                     }}
@@ -701,7 +752,7 @@ export function SubscriptionPaymentModal({
                   {/* Option 2: Explore Dashboard */}
                   <div
                     onClick={() => {
-                      onClose();
+                      close();
                       if (onNavigateTab) onNavigateTab("overview");
                     }}
                     className="group cursor-pointer rounded-2xl border border-neutral-200 p-3.5 transition-all hover:border-neutral-950 hover:bg-neutral-50 flex items-start gap-3"
@@ -723,7 +774,7 @@ export function SubscriptionPaymentModal({
                   {/* Option 3: Designer themes */}
                   <div
                     onClick={() => {
-                      onClose();
+                      close();
                       if (onNavigateTab) onNavigateTab("themes");
                     }}
                     className="group cursor-pointer rounded-2xl border border-neutral-200 p-3.5 transition-all hover:border-neutral-950 hover:bg-neutral-50 flex items-start gap-3"
@@ -745,7 +796,7 @@ export function SubscriptionPaymentModal({
                   {/* Option 4: Add Products */}
                   <div
                     onClick={() => {
-                      onClose();
+                      close();
                       if (onNavigateTab) onNavigateTab("products");
                     }}
                     className="group cursor-pointer rounded-2xl border border-neutral-200 p-3.5 transition-all hover:border-neutral-950 hover:bg-neutral-50 flex items-start gap-3"
@@ -770,7 +821,7 @@ export function SubscriptionPaymentModal({
               <div className="border-t border-neutral-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={close}
                   className="w-full sm:w-auto h-11 px-5 rounded-xl bg-neutral-900 text-white font-semibold text-xs hover:bg-black transition-colors"
                 >
                   Close & Return to Dashboard
@@ -785,7 +836,8 @@ export function SubscriptionPaymentModal({
                     Cancel request
                   </button>
 
-                  {/* Instant Verification Simulation for Demo / Dev */}
+                  {/* Local development only: stands in for the admin approving the payment */}
+                  {process.env.NODE_ENV !== "production" && (
                   <button
                     type="button"
                     onClick={handleSimulateInstantVerification}
@@ -794,15 +846,16 @@ export function SubscriptionPaymentModal({
                     title="For demonstration/testing: instantly confirms payment without waiting 1-2 hours"
                   >
                     <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-                    <span>{simulatingVerification ? "Verifying..." : "Instant Test Verify"}</span>
+                    <span>{simulatingVerification ? "Verifying..." : "Simulate approval (dev only)"}</span>
                   </button>
+                  )}
                 </div>
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

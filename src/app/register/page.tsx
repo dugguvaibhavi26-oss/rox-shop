@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { storeService } from "@/lib/store-service";
 import { siteConfig, getStoreUrl } from "@/lib/config/site";
 import { cn } from "@/lib/utils";
+import { PLATFORM_PLANS, type BillingCycle } from "@/lib/plans";
 import {
   AuthShell,
   AuthHeading,
@@ -64,7 +65,7 @@ export default function RegisterStorePage() {
 function RegisterStoreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, signUp } = useAuth();
+  const { user, signUp, loading: authLoading } = useAuth();
 
   const [step, setStep] = useState<1 | 2 | 3>(1); // 3 = launched
   const [qIndex, setQIndex] = useState(0);
@@ -83,6 +84,38 @@ function RegisterStoreContent() {
   const [accountPassword, setAccountPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [upiId, setUpiId] = useState("");
+
+  // Plan picked on the homepage pricing (?plan=starter|pro&cycle=...), switchable on the last step.
+  // A paid plan only switches on after payment, so the store launches on Free and payment follows.
+  const [planId, setPlanId] = useState<"free" | "starter" | "pro">(() => {
+    const p = searchParams.get("plan");
+    return p === "starter" || p === "pro" ? p : "free";
+  });
+  const [billingCycle] = useState<BillingCycle>(() => {
+    const c = searchParams.get("cycle");
+    return c === "quarterly" || c === "yearly" ? c : "monthly";
+  });
+  const chosenPlan = PLATFORM_PLANS[planId];
+
+  // A seller who already has a store and picked a paid plan goes straight to that store's
+  // upgrade page instead of the sign-up steps. Without a plan, sign-up still makes a new store.
+  const wantsUpgrade = searchParams.get("plan") === "starter" || searchParams.get("plan") === "pro";
+  const [upgradeTarget, setUpgradeTarget] = useState("");
+  useEffect(() => {
+    if (!wantsUpgrade || !user) return;
+    const owned = storeService.getUserStores(user.uid, user.email || undefined);
+    if (owned.length === 0) return;
+    let active = "";
+    try {
+      active = localStorage.getItem("shopper_active_store") || "";
+    } catch {
+      // storage unavailable; fall back to the first store
+    }
+    const target = owned.find((s) => s.subdomain === active) || owned[0];
+    setUpgradeTarget(target.subdomain);
+    router.replace(`/dashboard?store=${target.subdomain}&checkout=${planId}&cycle=${billingCycle}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsUpgrade, user]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdSubdomain, setCreatedSubdomain] = useState("");
@@ -194,6 +227,9 @@ function RegisterStoreContent() {
     setQError("");
     setQIndex(Math.max(0, qIndex - 1));
   };
+
+  // While we check for (or move to) an existing store, don't flash the sign-up steps
+  if (wantsUpgrade && (authLoading || upgradeTarget)) return <AuthFallback />;
 
   return (
     <AuthShell
@@ -340,16 +376,53 @@ function RegisterStoreContent() {
                     </span>
                   }
                 />
-                <div className="mt-5 rounded-[12px] border border-neutral-200 p-4">
-                  <span className="text-sm font-semibold">Included free</span>
-                  <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-neutral-600">
-                    {["75 products", "2 themes", "UPI QR & Cash on Delivery", "WhatsApp order alerts"].map((t) => (
-                      <li key={t} className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-black shrink-0" />
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
+                {/* Plan: pre-selected from the pricing page, switchable here */}
+                <div className="mt-6">
+                  <span className="text-sm font-semibold">Your plan</span>
+                  <div role="radiogroup" aria-label="Choose your plan" className="mt-2 grid grid-cols-3 gap-2">
+                    {(["free", "starter", "pro"] as const).map((id) => {
+                      const p = PLATFORM_PLANS[id];
+                      const on = planId === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => setPlanId(id)}
+                          className={cn(
+                            "rounded-[12px] border p-3 text-left transition-colors",
+                            on ? "border-black bg-black text-white" : "border-neutral-200 hover:border-neutral-400"
+                          )}
+                        >
+                          <span className="block text-sm font-semibold">{p.name}</span>
+                          <span className="mt-1 block text-[15px] font-semibold">
+                            {p.priceFormatted.split(" ")[0]}
+                            {id !== "free" && <span className={cn("text-xs font-normal", on ? "text-white/60" : "text-neutral-500")}>/mo</span>}
+                          </span>
+                          <span className={cn("block h-4 text-xs line-through", on ? "text-white/50" : "text-neutral-400")}>
+                            {p.originalPriceFormatted?.split(" ")[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 rounded-[12px] border border-neutral-200 p-4">
+                    <span className="text-sm font-semibold">{planId === "free" ? "Included free" : `Included in ${chosenPlan.name}`}</span>
+                    <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-neutral-600">
+                      {chosenPlan.features.map((t) => (
+                        <li key={t} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-black shrink-0 mt-[3px]" />
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+                    {planId !== "free" && (
+                      <p className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500">
+                        Your store goes live right away. Next you&apos;ll pay {chosenPlan.priceFormatted.split(" ")[0]}/mo to switch on {chosenPlan.name}.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -369,7 +442,7 @@ function RegisterStoreContent() {
               </button>
             )}
             <AuthButton type="submit" loading={isSubmitting} loadingText="Launching your shop…" className="flex-1">
-              {isLast ? "Launch my store" : "Continue"}
+              {isLast ? (planId === "free" ? "Launch my store" : `Launch & get ${chosenPlan.name}`) : "Continue"}
               <ArrowRight className="w-4 h-4" />
             </AuthButton>
           </div>
@@ -424,11 +497,39 @@ function RegisterStoreContent() {
             </Link>
           </div>
 
+          {planId !== "free" && (
+            <div className="mt-4 rounded-[12px] bg-black text-white p-4">
+              <span className="block text-sm font-semibold">One more step: switch on {chosenPlan.name}</span>
+              <span className="mt-1 block text-xs text-white/60">
+                Your store runs on Free until your {chosenPlan.priceFormatted.split(" ")[0]}/mo payment is confirmed.
+              </span>
+            </div>
+          )}
+
           <div className="mt-6 space-y-3">
-            <AuthButton type="button" onClick={() => router.push(`/dashboard?store=${createdSubdomain}`)}>
-              Go to my dashboard
-              <ArrowRight className="w-4 h-4" />
-            </AuthButton>
+            {planId !== "free" ? (
+              <AuthButton
+                type="button"
+                onClick={() => router.push(`/dashboard?store=${createdSubdomain}&checkout=${planId}&cycle=${billingCycle}`)}
+              >
+                Pay & activate {chosenPlan.name}
+                <ArrowRight className="w-4 h-4" />
+              </AuthButton>
+            ) : (
+              <AuthButton type="button" onClick={() => router.push(`/dashboard?store=${createdSubdomain}`)}>
+                Go to my dashboard
+                <ArrowRight className="w-4 h-4" />
+              </AuthButton>
+            )}
+            {planId !== "free" && (
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard?store=${createdSubdomain}`)}
+                className="w-full h-11 text-sm font-semibold text-neutral-500 hover:text-black transition-colors"
+              >
+                Stay on Free for now
+              </button>
+            )}
             <a
               href={`https://wa.me/?text=${encodeURIComponent(
                 `We just launched our online store! Browse our catalog here: https://${createdSubdomain}.${siteConfig.domain}`

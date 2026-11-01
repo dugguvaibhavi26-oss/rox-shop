@@ -1,4 +1,4 @@
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, calculatePlanPrice, type BillingCycle } from "./plans";
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, calculatePlanPrice, type BillingCycle, applyPlanAccess, getDefaultPlanAccess, type PlanAccess, type PlanId } from "./plans";
 import { getTheme, PLATFORM_THEMES, registerUploadedThemes, type ThemeDefinition } from "./themes";
 import { manifestToTheme, type ParsedTemplate } from "./templates/package";
 import { db, storage } from "./firebase";
@@ -225,6 +225,9 @@ export interface SubscriptionRequest {
   createdAt: string;
   estimatedVerificationTime: string;
   verifiedAt?: string;
+  rejectedAt?: string;
+  /** False until the seller has seen the approved / rejected notice */
+  seenBySeller?: boolean;
   note?: string;
 }
 
@@ -1207,6 +1210,8 @@ class StoreService {
       this.connectFirebase();
       this.loadPlatformTemplates();
       this.connectPlatformTemplates();
+      this.loadPlanAccess();
+      this.connectPlanAccess();
     }
   }
 
@@ -1591,6 +1596,7 @@ class StoreService {
       ...pending,
       status: "verified",
       verifiedAt: new Date().toISOString(),
+      seenBySeller: false,
     };
 
     const updatedHistory = (store.subscriptionHistory || []).map((h) =>
@@ -1615,6 +1621,7 @@ class StoreService {
       ...store.pendingSubscription,
       status: "rejected",
       note: "Cancelled by seller",
+      seenBySeller: true,
     };
 
     const updatedHistory = (store.subscriptionHistory || []).map((h) =>
@@ -1627,6 +1634,38 @@ class StoreService {
     });
 
     return true;
+  }
+
+  /** Admin: payment couldn't be confirmed. The store stays on its current plan. */
+  public rejectSubscriptionPayment(subdomain: string, reason?: string): boolean {
+    this.initClient();
+    const store = this.getStore(subdomain);
+    const pending = store?.pendingSubscription;
+    if (!store || !pending) return false;
+
+    const rejectedReq: SubscriptionRequest = {
+      ...pending,
+      status: "rejected",
+      rejectedAt: new Date().toISOString(),
+      note: reason?.trim() || "We couldn't find this payment.",
+      seenBySeller: false,
+    };
+
+    this.updateStore(store.subdomain, {
+      pendingSubscription: null,
+      subscriptionHistory: (store.subscriptionHistory || []).map((h) => (h.id === pending.id ? rejectedReq : h)),
+    });
+    return true;
+  }
+
+  /** Seller has seen their approved / rejected payment notices. */
+  public markSubscriptionUpdatesSeen(subdomain: string): void {
+    this.initClient();
+    const store = this.getStore(subdomain);
+    if (!store?.subscriptionHistory?.some((h) => h.seenBySeller === false)) return;
+    this.updateStore(store.subdomain, {
+      subscriptionHistory: store.subscriptionHistory.map((h) => (h.seenBySeller === false ? { ...h, seenBySeller: true } : h)),
+    });
   }
 
   public setStoreTheme(
@@ -2386,6 +2425,58 @@ class StoreService {
     );
     this.notify();
     return banner;
+  }
+
+  // --- Feature access per plan (set by the admin, followed by every store on that plan) ---
+  private loadPlanAccess() {
+    try {
+      const saved = localStorage.getItem("shopper_plan_access");
+      if (saved) applyPlanAccess(JSON.parse(saved));
+    } catch (e) {
+      console.warn("Failed to load plan access settings", e);
+    }
+  }
+
+  private connectPlanAccess() {
+    try {
+      onSnapshot(
+        doc(db, "platform_settings", "plan_access"),
+        (snap) => {
+          if (!snap.exists()) return;
+          const plans = (snap.data() as { plans?: Record<string, Partial<PlanAccess>> }).plans;
+          applyPlanAccess(plans);
+          try {
+            localStorage.setItem("shopper_plan_access", JSON.stringify(plans || {}));
+          } catch {
+            // local copy is only a fast start; Firestore stays the source
+          }
+          this.notify();
+        },
+        (error) => console.warn("[Firebase Firestore] Plan access listener warning:", error)
+      );
+    } catch (err) {
+      console.warn("[Firebase Firestore] Plan access listener failed:", err);
+    }
+  }
+
+  /** Admin: save what each plan unlocks. Applies everywhere straight away. */
+  public savePlanAccess(plans: Record<PlanId, PlanAccess>) {
+    this.initClient();
+    applyPlanAccess(plans);
+    try {
+      localStorage.setItem("shopper_plan_access", JSON.stringify(plans));
+    } catch {
+      // ignore: Firestore below is what other devices read
+    }
+    setDoc(doc(db, "platform_settings", "plan_access"), {
+      plans: JSON.parse(JSON.stringify(plans)),
+      updatedAt: new Date().toISOString(),
+    }).catch((err) => console.warn("[Firebase Firestore] Plan access save error", err));
+    this.notify();
+  }
+
+  public resetPlanAccess() {
+    this.savePlanAccess(getDefaultPlanAccess());
   }
 
   // --- Platform templates (ZIP uploads from the admin, offered to every seller once published) ---
