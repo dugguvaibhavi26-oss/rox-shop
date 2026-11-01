@@ -8,6 +8,7 @@ import { storeService } from "@/lib/store-service";
 import { siteConfig, getStoreUrl } from "@/lib/config/site";
 import { cn } from "@/lib/utils";
 import { PLATFORM_PLANS, type BillingCycle } from "@/lib/plans";
+import { usePlatformSettings } from "@/lib/use-platform-settings";
 import {
   AuthShell,
   AuthHeading,
@@ -66,6 +67,7 @@ function RegisterStoreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, signUp, loading: authLoading } = useAuth();
+  usePlatformSettings();
 
   const [step, setStep] = useState<1 | 2 | 3>(1); // 3 = launched
   const [qIndex, setQIndex] = useState(0);

@@ -20,7 +20,8 @@ import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { getStoreDomain, getStoreUrl } from "@/lib/config/site";
 import { PlatformBannersManager } from "@/components/admin/platform-banners-manager";
 import { PlatformTemplatesManager } from "@/components/admin/platform-templates-manager";
-import { PlanAccessManager } from "@/components/admin/plan-access-manager";
+import { PlansManager } from "@/components/admin/plans-manager";
+import { PlatformPaymentSettings } from "@/components/admin/platform-payment-settings";
 import {
   ShieldAlert,
   Users,
@@ -107,6 +108,8 @@ function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "users" | "subscriptions" | "broadcasts" | "banners" | "templates" | "health"
   >("overview");
+  // Plans & payments is split into sections
+  const [plansSection, setPlansSection] = useState<"payments" | "plans" | "stores" | "settings">("payments");
 
   // Detailed Seller Profile View State (when inspecting a single store's full history)
   const [viewingSellerSubdomain, setViewingSellerSubdomain] = useState<string | null>(
@@ -2195,9 +2198,34 @@ function AdminDashboardContent() {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">Plans & payments</h2>
-              <p className="mt-1 text-sm text-neutral-500">Approve payments, choose what each plan unlocks, and track revenue.</p>
+              <p className="mt-1 text-sm text-neutral-500">Approve payments, edit each plan, and see which store is on which plan.</p>
             </div>
 
+            {/* Sections */}
+            <div className="grid grid-cols-4 gap-1 rounded-2xl bg-neutral-100 p-1 sm:max-w-lg">
+              {([
+                { id: "payments", label: "Payments", badge: pendingPaymentCount },
+                { id: "plans", label: "Plans", badge: 0 },
+                { id: "stores", label: "Stores", badge: 0 },
+                { id: "settings", label: "Settings", badge: 0 },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setPlansSection(t.id)}
+                  style={{ minHeight: 0 }}
+                  className={`inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 text-[13px] font-semibold transition-all sm:text-sm ${
+                    plansSection === t.id ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-900"
+                  }`}
+                >
+                  {t.label}
+                  {t.badge > 0 && <span className="rounded-full bg-amber-400 px-1.5 text-[11px] font-semibold text-neutral-950">{t.badge}</span>}
+                </button>
+              ))}
+            </div>
+
+            {plansSection === "payments" && (
+            <>
             {/* Payment approvals: a seller's paid plan switches on only when approved here */}
             {(() => {
               const pending = stores.filter((s) => s.pendingSubscription).map((s) => ({ s, req: s.pendingSubscription! }));
@@ -2265,80 +2293,45 @@ function AdminDashboardContent() {
               );
             })()}
 
-            {/* What each plan unlocks (applies to every store on that plan) */}
-            <PlanAccessManager
-              storesByPlan={{
+            </>
+            )}
+
+            {/* Settings: where sellers pay */}
+            {plansSection === "settings" && <PlatformPaymentSettings />}
+
+            {/* Each plan with its own editor: name, price, text, features, limits and what it unlocks */}
+            {plansSection === "plans" && (
+              <PlansManager
+                storesByPlan={{
                 free: stores.filter((s) => (s.planId || "free") === "free").length,
                 starter: stores.filter((s) => s.planId === "starter").length,
                 pro: stores.filter((s) => s.planId === "pro").length,
               }}
-            />
+              />
+            )}
 
-            {/* Plan Tier Breakdown Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Free Tier */}
-              <div className="p-6 rounded-xl bg-white border border-neutral-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-neutral-900 text-base">Free Plan</h3>
-                    <p className="text-xs text-neutral-500">Start selling for free</p>
+            {plansSection === "stores" && (
+            <>
+            {/* Stores and revenue per plan */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {(["free", "starter", "pro"] as const).map((id) => {
+                const plan = PLATFORM_PLANS[id];
+                const count = id === "free" ? stats.freeStores : id === "starter" ? stats.starterStores : stats.proStores;
+                const revenue = count * (plan.priceMonthly / 100);
+                return (
+                  <div key={id} className={`rounded-2xl p-5 ${id === "pro" ? "bg-neutral-950 text-white" : "border border-neutral-200 bg-white"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{plan.name}</span>
+                      <span className={`text-xs ${id === "pro" ? "text-neutral-400" : "text-neutral-500"}`}>{plan.priceFormatted.split(" ")[0]}/mo</span>
+                    </div>
+                    <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{count}</p>
+                    <p className={`mt-1 text-xs ${id === "pro" ? "text-neutral-400" : "text-neutral-500"}`}>
+                      store{count === 1 ? "" : "s"}
+                      {id !== "free" && ` · ₹${revenue.toLocaleString("en-IN")}/mo`}
+                    </p>
                   </div>
-                  <span className="text-xl font-black text-neutral-900">₹0</span>
-                </div>
-                <div className="p-3.5 bg-neutral-50 border border-neutral-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• {PLATFORM_PLANS.free.maxProducts} products</p>
-                  <p>• 2 themes</p>
-                  <p>• COD and direct UPI</p>
-                </div>
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">Active Stores:</span>
-                  <span className="font-mono font-bold text-neutral-900">{stats.freeStores}</span>
-                </div>
-              </div>
-
-              {/* Starter Tier */}
-              <div className="p-6 rounded-xl bg-white border border-amber-300 shadow-xs space-y-4 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-neutral-900 text-base">Growth</h3>
-                    <p className="text-xs text-neutral-500">Coupons, reviews and more products</p>
-                  </div>
-                  <span className="text-xl font-black text-amber-700">{PLATFORM_PLANS.starter.priceFormatted.split(" ")[0]}/mo</span>
-                </div>
-                <div className="p-3.5 bg-amber-50/50 border border-amber-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• {PLATFORM_PLANS.starter.maxProducts} products</p>
-                  <p>• Discount coupons and customer reviews</p>
-                  <p>• Payment gateway</p>
-                </div>
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">Active Stores:</span>
-                  <span className="font-mono font-bold text-amber-700">
-                    {stats.starterStores} (₹{(stats.starterStores * (PLATFORM_PLANS.starter.priceMonthly / 100)).toLocaleString("en-IN")}/mo)
-                  </span>
-                </div>
-              </div>
-
-              {/* Pro Unlimited Tier */}
-              <div className="p-6 rounded-xl bg-white border border-emerald-300 shadow-xs space-y-4 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-neutral-900 text-base">Pro</h3>
-                    <p className="text-xs text-neutral-500">Everything, on their own domain</p>
-                  </div>
-                  <span className="text-xl font-black text-emerald-700">{PLATFORM_PLANS.pro.priceFormatted.split(" ")[0]}/mo</span>
-                </div>
-                <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/60 rounded-lg text-xs space-y-1.5 text-neutral-700">
-                  <p>• Unlimited products and every premium theme</p>
-                  <p>• Own domain, automatic invoices, store app</p>
-                  <p>• Email integration and priority support</p>
-                </div>
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">Active Stores:</span>
-                  <span className="font-mono font-bold text-emerald-700">
-                    {stats.proStores} (₹{(stats.proStores * (PLATFORM_PLANS.pro.priceMonthly / 100)).toLocaleString("en-IN")}/mo)
-                  </span>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             {/* Quick Plan Override Tool */}
@@ -2348,7 +2341,7 @@ function AdminDashboardContent() {
                 <span>Change a store's plan manually</span>
               </h3>
               <p className="text-xs text-neutral-500">
-                As the product lead, you can upgrade any registered store to Starter or Pro without requiring merchant payment.
+                Move any store to another plan without a payment, for example to give a seller a free upgrade.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -2367,14 +2360,16 @@ function AdminDashboardContent() {
                       onChange={(e) => handleUpdatePlan(s.subdomain, e.target.value as any)}
                       className="bg-white border border-neutral-300 text-xs rounded px-2.5 py-1 text-neutral-800 cursor-pointer"
                     >
-                      <option value="free">Free</option>
-                      <option value="starter">Starter</option>
-                      <option value="pro">Pro</option>
+                      <option value="free">{PLATFORM_PLANS.free.name}</option>
+                      <option value="starter">{PLATFORM_PLANS.starter.name}</option>
+                      <option value="pro">{PLATFORM_PLANS.pro.name}</option>
                     </select>
                   </div>
                 ))}
               </div>
             </div>
+            </>
+            )}
           </div>
         )}
 

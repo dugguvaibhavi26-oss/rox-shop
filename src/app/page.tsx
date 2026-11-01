@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { siteConfig } from "@/lib/config/site";
+import { usePlatformSettings } from "@/lib/use-platform-settings";
 import { PLATFORM_PLANS, planDiscountPercent, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
 import { PLATFORM_THEMES } from "@/lib/themes";
 import { cn } from "@/lib/utils";
@@ -1282,6 +1283,7 @@ function Statement() {
 /* ------------------------------------------------------------------ */
 
 function Pricing() {
+  usePlatformSettings();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
   return (

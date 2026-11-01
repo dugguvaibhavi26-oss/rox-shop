@@ -69,6 +69,10 @@ export function SubscriptionPaymentModal({
 }: SubscriptionPaymentModalProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<"starter" | "pro">(initialPlanId);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialBillingCycle);
+  // Where sellers pay (set by the admin); follows changes live
+  const [platformPayment, setPlatformPayment] = useState(() => storeService.getPlatformPayment());
+  useEffect(() => storeService.subscribe(() => setPlatformPayment(storeService.getPlatformPayment())), []);
+
   const [step, setStep] = useState<ModalStep>(() => (readParam("step") === "payment" ? "payment" : "review"));
   // One payment reference per checkout, kept across re-renders and refreshes
   const [generatedRef, setGeneratedRef] = useState(() => {
@@ -135,8 +139,8 @@ export function SubscriptionPaymentModal({
   // Strictly format to 2 decimal places so UPI apps receive a fixed, non-editable amount
   const fixedAmountStr = amountRupees.toFixed(2);
 
-  const platformUpiId = siteConfig.platformUpiId || "shopper.pay@okicici";
-  const platformMerchant = siteConfig.platformMerchantName || "Shopper Platforms India";
+  const platformUpiId = platformPayment.upiId;
+  const platformMerchant = platformPayment.payeeName;
   const transactionRef = submittedRequest?.referenceId || generatedRef;
   const transactionNote = `Sub ${currentPlan.name} - ${store.subdomain}`.slice(0, 48);
 
@@ -163,10 +167,6 @@ export function SubscriptionPaymentModal({
     setTimeout(() => setCopiedAmount(false), 2000);
   };
 
-  const handleOpenUpiApp = () => {
-    // Open the UPI intent scheme on mobile/tablet devices
-    window.location.href = upiPayUrl;
-  };
 
   const handleSubmitPayment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -520,35 +520,14 @@ export function SubscriptionPaymentModal({
                 <span>Change Plan</span>
               </button>
 
-              {/* Amount Fixed Banner */}
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3.5 text-emerald-950 flex items-start gap-3">
-                <Lock className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
-                <div className="text-xs leading-relaxed">
-                  <span className="font-bold block text-sm">
-                    Amount Locked: ₹{fixedAmountStr} (Non-Editable)
-                  </span>
-                  <span>
-                    Per standard UPI protocol, the subscription charge is hardcoded to prevent
-                    accidental overpayment or incorrect edits.
-                  </span>
-                </div>
-              </div>
-
-              {/* UPI Device Deep Link Button */}
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleOpenUpiApp}
-                  className="w-full h-13 rounded-2xl bg-neutral-950 text-white font-bold text-sm inline-flex items-center justify-center gap-2.5 shadow-lg hover:bg-neutral-800 active:scale-[0.99] transition-all cursor-pointer"
-                >
-                  <Smartphone className="h-5 w-5 text-amber-400" />
-                  <span>Pay with Installed UPI App</span>
-                  <ExternalLink className="h-4 w-4 text-neutral-400" />
-                </button>
-                <p className="text-[11px] text-center text-neutral-500">
-                  Opens Google Pay, PhonePe, Paytm, BHIM, or CRED directly on your phone with amount locked.
-                </p>
-              </div>
+              {/* Opens the phone's UPI app with the payee and amount filled in */}
+              <a
+                href={upiPayUrl}
+                className="w-full h-13 rounded-2xl bg-neutral-950 text-white font-semibold text-sm inline-flex items-center justify-center gap-2.5 hover:bg-neutral-800 active:scale-[0.99] transition-all"
+              >
+                <Smartphone className="h-5 w-5" />
+                <span>Pay ₹{fixedAmountStr} with UPI</span>
+              </a>
 
               {/* Divider */}
               <div className="relative flex items-center justify-center">

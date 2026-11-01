@@ -1,4 +1,4 @@
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, calculatePlanPrice, type BillingCycle, applyPlanAccess, getDefaultPlanAccess, type PlanAccess, type PlanId } from "./plans";
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, calculatePlanPrice, type BillingCycle, applyPlanAccess, getDefaultPlanAccess, getAllPlanAccess, applyPlanDetails, getAllPlanDetails, getDefaultPlanDetails, type PlanAccess, type PlanDetails, type PlanId } from "./plans";
 import { getTheme, PLATFORM_THEMES, registerUploadedThemes, type ThemeDefinition } from "./themes";
 import { manifestToTheme, type ParsedTemplate } from "./templates/package";
 import { db, storage } from "./firebase";
@@ -206,6 +206,23 @@ export interface StoreData {
   themeSectionOrders?: Record<string, string[]>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PlatformPayment {
+  /** UPI ID sellers pay their subscription to */
+  upiId: string;
+  /** Name shown in the buyer's UPI app */
+  payeeName: string;
+}
+
+export interface PlatformPaymentSettings {
+  accounts: PlatformPayment[];
+  /** the account sellers pay to */
+  activeUpiId: string;
+}
+
+export function isValidUpiId(value: string): boolean {
+  return /^[\w.\-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/.test(value.trim());
 }
 
 export interface SubscriptionRequest {
@@ -1210,8 +1227,12 @@ class StoreService {
       this.connectFirebase();
       this.loadPlatformTemplates();
       this.connectPlatformTemplates();
+      this.loadPlanDetails();
+      this.connectPlanDetails();
       this.loadPlanAccess();
       this.connectPlanAccess();
+      this.loadPlatformPayment();
+      this.connectPlatformPayment();
     }
   }
 
@@ -1561,7 +1582,7 @@ class StoreService {
       billingCycle: cycle,
       status: "pending_verification",
       paymentMethod: "upi",
-      payeeUpiId: data.payeeUpiId || siteConfig.platformUpiId,
+      payeeUpiId: data.payeeUpiId || this.getPlatformPayment().upiId,
       paymentUtr: data.paymentUtr?.trim() || undefined,
       createdAt: new Date().toISOString(),
       estimatedVerificationTime: "1-2 hours",
@@ -2427,6 +2448,100 @@ class StoreService {
     return banner;
   }
 
+  // --- Where sellers pay their subscription (UPI IDs added by the admin; one is in use) ---
+  private paymentSettings: PlatformPaymentSettings = {
+    accounts: [{ upiId: siteConfig.platformUpiId, payeeName: siteConfig.platformMerchantName }],
+    activeUpiId: siteConfig.platformUpiId,
+  };
+
+  /** The UPI ID sellers pay to right now. */
+  public getPlatformPayment(): PlatformPayment {
+    this.initClient();
+    const { accounts, activeUpiId } = this.paymentSettings;
+    return accounts.find((a) => a.upiId === activeUpiId) || accounts[0];
+  }
+
+  /** Every UPI ID the admin has added, and which one is in use. */
+  public getPlatformPaymentSettings(): PlatformPaymentSettings {
+    this.initClient();
+    return { accounts: this.paymentSettings.accounts.map((a) => ({ ...a })), activeUpiId: this.paymentSettings.activeUpiId };
+  }
+
+  /** Cleans saved settings: keeps valid, unique UPI IDs; also reads the older single-UPI shape. */
+  private applyPlatformPayment(saved?: Partial<PlatformPaymentSettings & PlatformPayment> | null) {
+    const name = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 50) : siteConfig.platformMerchantName);
+    const seen = new Set<string>();
+    const accounts: PlatformPayment[] = [];
+    const add = (upiId: unknown, payeeName: unknown) => {
+      if (typeof upiId !== "string" || !isValidUpiId(upiId)) return;
+      const id = upiId.trim();
+      if (seen.has(id.toLowerCase())) return;
+      seen.add(id.toLowerCase());
+      accounts.push({ upiId: id, payeeName: name(payeeName) });
+    };
+    if (Array.isArray(saved?.accounts)) saved!.accounts.forEach((a) => add(a?.upiId, a?.payeeName));
+    if (accounts.length === 0) add(saved?.upiId, saved?.payeeName);
+    if (accounts.length === 0) add(siteConfig.platformUpiId, siteConfig.platformMerchantName);
+    const wanted = typeof saved?.activeUpiId === "string" ? saved.activeUpiId : typeof saved?.upiId === "string" ? saved.upiId : "";
+    const active = accounts.find((a) => a.upiId.toLowerCase() === wanted.trim().toLowerCase()) || accounts[0];
+    this.paymentSettings = { accounts, activeUpiId: active.upiId };
+  }
+
+  private loadPlatformPayment() {
+    try {
+      const saved = localStorage.getItem("shopper_platform_payment");
+      if (saved) this.applyPlatformPayment(JSON.parse(saved));
+    } catch (e) {
+      console.warn("Failed to load payment settings", e);
+    }
+  }
+
+  private connectPlatformPayment() {
+    try {
+      onSnapshot(
+        doc(db, "platform_settings", "payment"),
+        (snap) => {
+          if (!snap.exists()) return;
+          this.applyPlatformPayment(snap.data() as Partial<PlatformPaymentSettings & PlatformPayment>);
+          try {
+            localStorage.setItem("shopper_platform_payment", JSON.stringify(this.paymentSettings));
+          } catch {
+            // local copy is only a fast start
+          }
+          this.notify();
+        },
+        (error) => console.warn("[Firebase Firestore] Payment settings listener warning:", error)
+      );
+    } catch (err) {
+      console.warn("[Firebase Firestore] Payment settings listener failed:", err);
+    }
+  }
+
+  /** Admin: save the list of UPI IDs and which one sellers pay to. */
+  public savePlatformPaymentSettings(next: PlatformPaymentSettings): { success: boolean; error?: string } {
+    this.initClient();
+    const bad = next.accounts.find((a) => !isValidUpiId(a.upiId));
+    if (bad) return { success: false, error: `${bad.upiId || "That"} isn't a valid UPI ID. Use one like name@okaxis.` };
+    if (next.accounts.length === 0) return { success: false, error: "Keep at least one UPI ID." };
+    this.applyPlatformPayment(next);
+    const active = this.getPlatformPayment();
+    try {
+      localStorage.setItem("shopper_platform_payment", JSON.stringify(this.paymentSettings));
+    } catch {
+      // ignore: Firestore below is what other devices read
+    }
+    setDoc(doc(db, "platform_settings", "payment"), {
+      accounts: this.paymentSettings.accounts,
+      activeUpiId: this.paymentSettings.activeUpiId,
+      // the UPI ID in use, also kept flat for anything reading the older shape
+      upiId: active.upiId,
+      payeeName: active.payeeName,
+      updatedAt: new Date().toISOString(),
+    }).catch((err) => console.warn("[Firebase Firestore] Payment settings save error", err));
+    this.notify();
+    return { success: true };
+  }
+
   // --- Feature access per plan (set by the admin, followed by every store on that plan) ---
   private loadPlanAccess() {
     try {
@@ -2477,6 +2592,65 @@ class StoreService {
 
   public resetPlanAccess() {
     this.savePlanAccess(getDefaultPlanAccess());
+  }
+
+  // --- Plan name, price, description and features (set by the admin) ---
+  private loadPlanDetails() {
+    try {
+      const saved = localStorage.getItem("shopper_plan_details");
+      if (saved) applyPlanDetails(JSON.parse(saved));
+    } catch (e) {
+      console.warn("Failed to load plan details", e);
+    }
+  }
+
+  private connectPlanDetails() {
+    try {
+      onSnapshot(
+        doc(db, "platform_settings", "plan_details"),
+        (snap) => {
+          if (!snap.exists()) return;
+          const plans = (snap.data() as { plans?: Record<string, Partial<PlanDetails>> }).plans;
+          applyPlanDetails(plans);
+          try {
+            localStorage.setItem("shopper_plan_details", JSON.stringify(plans || {}));
+          } catch {
+            // local copy is only a fast start
+          }
+          this.notify();
+        },
+        (error) => console.warn("[Firebase Firestore] Plan details listener warning:", error)
+      );
+    } catch (err) {
+      console.warn("[Firebase Firestore] Plan details listener failed:", err);
+    }
+  }
+
+  public savePlanDetails(plans: Record<PlanId, PlanDetails>) {
+    this.initClient();
+    applyPlanDetails(plans);
+    const clean = getAllPlanDetails();
+    try {
+      localStorage.setItem("shopper_plan_details", JSON.stringify(clean));
+    } catch {
+      // ignore: Firestore below is what other devices read
+    }
+    setDoc(doc(db, "platform_settings", "plan_details"), {
+      plans: JSON.parse(JSON.stringify(clean)),
+      updatedAt: new Date().toISOString(),
+    }).catch((err) => console.warn("[Firebase Firestore] Plan details save error", err));
+    this.notify();
+  }
+
+  /** Admin: save one plan's details and what it unlocks together. */
+  public savePlan(id: PlanId, details: PlanDetails, access: PlanAccess) {
+    this.savePlanDetails({ ...getAllPlanDetails(), [id]: details });
+    this.savePlanAccess({ ...getAllPlanAccess(), [id]: access });
+  }
+
+  /** Admin: put one plan back to its built-in name, price, text, features and access. */
+  public resetPlan(id: PlanId) {
+    this.savePlan(id, getDefaultPlanDetails()[id], getDefaultPlanAccess()[id]);
   }
 
   // --- Platform templates (ZIP uploads from the admin, offered to every seller once published) ---

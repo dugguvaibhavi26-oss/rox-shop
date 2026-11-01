@@ -287,10 +287,95 @@ export function applyPlanAccess(saved?: Partial<Record<string, Partial<PlanAcces
     plan.maxProducts = access.maxProducts;
     plan.maxBanners = access.maxBanners;
     plan.customDomain = access.customDomain;
-    // keep the product line on the plan cards true to the limit
-    const productLine = access.maxProducts >= UNLIMITED ? "Unlimited products" : `Up to ${access.maxProducts} products`;
+  }
+  syncProductLines();
+}
+
+/** Keep the "Up to N products" line on each plan card true to the plan's product limit. */
+function syncProductLines() {
+  for (const id of PLAN_IDS) {
+    const plan = PLATFORM_PLANS[id];
+    const limit = planAccess[id].maxProducts;
+    const productLine = limit >= UNLIMITED ? "Unlimited products" : `Up to ${limit} products`;
     plan.features = plan.features.map((f) => (/^(Up to \d+ products|Unlimited products)$/.test(f) ? productLine : f));
   }
+}
+
+// --- Plan name, price, text and feature list, editable by the admin -----------------------------
+
+export interface PlanDetails {
+  name: string;
+  /** monthly price in rupees (Free is always 0) */
+  priceRupees: number;
+  /** struck-through "was" price in rupees; 0 hides it */
+  originalPriceRupees: number;
+  description: string;
+  features: string[];
+}
+
+function readDetails(id: PlanId): PlanDetails {
+  const p = PLATFORM_PLANS[id];
+  return {
+    name: p.name,
+    priceRupees: Math.round(p.priceMonthly / 100),
+    originalPriceRupees: Math.round((p.originalPriceMonthly || 0) / 100),
+    description: p.description,
+    features: [...p.features],
+  };
+}
+
+const DEFAULT_PLAN_DETAILS: Record<PlanId, PlanDetails> = {
+  free: readDetails("free"),
+  starter: readDetails("starter"),
+  pro: readDetails("pro"),
+};
+
+export function getDefaultPlanDetails(): Record<PlanId, PlanDetails> {
+  return {
+    free: { ...DEFAULT_PLAN_DETAILS.free, features: [...DEFAULT_PLAN_DETAILS.free.features] },
+    starter: { ...DEFAULT_PLAN_DETAILS.starter, features: [...DEFAULT_PLAN_DETAILS.starter.features] },
+    pro: { ...DEFAULT_PLAN_DETAILS.pro, features: [...DEFAULT_PLAN_DETAILS.pro.features] },
+  };
+}
+
+export function getAllPlanDetails(): Record<PlanId, PlanDetails> {
+  return { free: readDetails("free"), starter: readDetails("starter"), pro: readDetails("pro") };
+}
+
+const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+/** Applies saved plan details (bad values fall back to the defaults) to every plan card and price. */
+export function applyPlanDetails(saved?: Partial<Record<string, Partial<PlanDetails>>> | null) {
+  const defaults = getDefaultPlanDetails();
+  for (const id of PLAN_IDS) {
+    const s = saved?.[id] || {};
+    const d = defaults[id];
+    const text = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 200) : fallback);
+    const money = (v: unknown, fallback: number) =>
+      typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1000000 ? Math.round(v) : fallback;
+    const name = text(s.name, d.name).slice(0, 40);
+    // Free stays free: the payment flow only exists for the paid plans
+    const price = id === "free" ? 0 : Math.max(1, money(s.priceRupees, d.priceRupees));
+    const original = id === "free" ? 0 : money(s.originalPriceRupees, d.originalPriceRupees);
+    const features = Array.isArray(s.features)
+      ? s.features.filter((f): f is string => typeof f === "string" && !!f.trim()).map((f) => f.trim().slice(0, 120)).slice(0, 20)
+      : d.features;
+
+    const plan = PLATFORM_PLANS[id];
+    plan.name = name;
+    plan.priceMonthly = price * 100;
+    plan.priceFormatted = `${rupees(price)} / month`;
+    if (original > price) {
+      plan.originalPriceMonthly = original * 100;
+      plan.originalPriceFormatted = `${rupees(original)} / month`;
+    } else {
+      delete plan.originalPriceMonthly;
+      delete plan.originalPriceFormatted;
+    }
+    plan.description = text(s.description, d.description);
+    plan.features = features.length ? features : d.features;
+  }
+  syncProductLines();
 }
 
 export function canUseReviews(planId: string = "free"): boolean {

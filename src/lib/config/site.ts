@@ -48,9 +48,10 @@ export const siteConfig = {
   // Target currency
   currency: "INR",
 
-  // Platform Subscription & Billing UPI details
-  platformUpiId: process.env.NEXT_PUBLIC_PLATFORM_UPI_ID || "shopper.pay@okicici",
-  platformMerchantName: process.env.NEXT_PUBLIC_PLATFORM_MERCHANT_NAME || "Shopper Platforms India",
+  // Platform subscription UPI details. These are only the defaults: the admin can change them any
+  // time (Admin › Plans & payments), and the saved setting wins.
+  platformUpiId: process.env.NEXT_PUBLIC_PLATFORM_UPI_ID || "anumula.sridhar@ybl",
+  platformMerchantName: process.env.NEXT_PUBLIC_PLATFORM_MERCHANT_NAME || "shopersite",
   currencySymbol: "₹",
 
   // Performance budget indicators
