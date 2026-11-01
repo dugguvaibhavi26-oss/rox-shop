@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { storeService } from "@/lib/store-service";
 import { siteConfig } from "@/lib/config/site";
-import { PLATFORM_PLANS } from "@/lib/plans";
+import { PLATFORM_PLANS, calculatePlanPrice } from "@/lib/plans";
 
 describe("Subscription & UPI Payment Flow Unit Tests", () => {
   const testSubdomain = `subtest-${Date.now().toString(36)}`;
@@ -61,14 +61,35 @@ describe("Subscription & UPI Payment Flow Unit Tests", () => {
     expect(upiUrl).toContain(`pa=${encodeURIComponent(platformUpi)}`);
   });
 
-  it("supports annual billing option with 2 months discount calculation", () => {
+    it("supports quarterly billing option with 5% discount calculation", () => {
+    const pricing = calculatePlanPrice("starter", "quarterly");
+    expect(pricing.discountPercent).toBe(5);
+    expect(pricing.totalRupees).toBe(852); // Math.round(299 * 3 * 0.95)
+    expect(pricing.totalPaise).toBe(85200);
+
+    const req = storeService.createSubscriptionPayment(testSubdomain, {
+      planId: "starter",
+      billingCycle: "quarterly",
+    });
+
+    expect(req.billingCycle).toBe("quarterly");
+    expect(req.amount).toBe(85200);
+    expect(req.status).toBe("pending_verification");
+  });
+
+  it("supports annual billing option with 10% discount calculation", () => {
+    const pricing = calculatePlanPrice("starter", "yearly");
+    expect(pricing.discountPercent).toBe(10);
+    expect(pricing.totalRupees).toBe(3229); // Math.round(299 * 12 * 0.90)
+    expect(pricing.totalPaise).toBe(322900);
+
     const req = storeService.createSubscriptionPayment(testSubdomain, {
       planId: "starter",
       billingCycle: "yearly",
     });
 
     expect(req.billingCycle).toBe("yearly");
-    expect(req.amount).toBe(PLATFORM_PLANS.starter.priceYearly || 299000); // ₹2,990
+    expect(req.amount).toBe(322900);
     expect(req.status).toBe("pending_verification");
   });
 

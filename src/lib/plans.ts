@@ -6,14 +6,11 @@ export interface PlanFeature {
   tier: "free" | "starter" | "pro";
   priceMonthly: number; // in paise
   priceFormatted: string;
-<<<<<<< HEAD
   /** Pre-discount price shown struck through, in paise */
   originalPriceMonthly?: number;
   originalPriceFormatted?: string;
-=======
   priceYearly?: number; // in paise
   priceYearlyFormatted?: string;
->>>>>>> 0422db4 (payments)
   maxProducts: number;
   themesAllowed: string[];
   customDomain: boolean;
@@ -50,15 +47,11 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     tier: "starter",
     priceMonthly: 29900,
     priceFormatted: "₹299 / month",
-<<<<<<< HEAD
     originalPriceMonthly: 49900,
     originalPriceFormatted: "₹499 / month",
-    maxProducts: 200,
-=======
     priceYearly: 299000,
     priceYearlyFormatted: "₹2,990 / year",
-    maxProducts: 50,
->>>>>>> 0422db4 (payments)
+    maxProducts: 200,
     themesAllowed: ["classic-bloom", "bento-tech", "botanical-wellness"],
     customDomain: false,
     maxBanners: 5,
@@ -77,17 +70,12 @@ export const PLATFORM_PLANS: Record<string, PlanFeature> = {
     id: "pro",
     name: "Pro",
     tier: "pro",
-<<<<<<< HEAD
     priceMonthly: 99900,
     priceFormatted: "₹999 / month",
     originalPriceMonthly: 149900,
     originalPriceFormatted: "₹1,499 / month",
-=======
-    priceMonthly: 79900,
-    priceFormatted: "₹799 / month",
-    priceYearly: 799000,
-    priceYearlyFormatted: "₹7,990 / year",
->>>>>>> 0422db4 (payments)
+    priceYearly: 999000,
+    priceYearlyFormatted: "₹9,990 / year",
     maxProducts: 999999,
     themesAllowed: [
       "classic-bloom",

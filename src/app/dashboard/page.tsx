@@ -18,11 +18,7 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS,
   DEFAULT_HOMEPAGE_SECTION_IDS,
 } from "@/lib/store-service";
-<<<<<<< HEAD
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent } from "@/lib/plans";
-=======
-import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, isPaidPlan, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
->>>>>>> 0422db4 (payments)
+import { PLATFORM_PLANS, canAddProduct, isThemeAllowed, canUseReviews, canUseCoupons, canUseEmail, planDiscountPercent, isPaidPlan, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
 import { CountUp } from "@/components/home/reveal";
 import { ShopperLogo } from "@/components/brand/shopper-logo";
 import { AnnouncementBanners } from "@/components/dashboard/announcement-banners";

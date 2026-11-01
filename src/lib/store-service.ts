@@ -1526,7 +1526,7 @@ class StoreService {
     subdomain: string,
     data: {
       planId: "starter" | "pro";
-      billingCycle?: "monthly" | "yearly";
+      billingCycle?: BillingCycle;
       paymentUtr?: string;
       referenceId?: string;
       payeeUpiId?: string;

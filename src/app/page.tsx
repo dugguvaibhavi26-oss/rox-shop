@@ -5,11 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { siteConfig } from "@/lib/config/site";
-<<<<<<< HEAD
-import { PLATFORM_PLANS, planDiscountPercent } from "@/lib/plans";
-=======
-import { PLATFORM_PLANS, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
->>>>>>> 0422db4 (payments)
+import { PLATFORM_PLANS, planDiscountPercent, calculatePlanPrice, BILLING_CYCLES, type BillingCycle } from "@/lib/plans";
 import { PLATFORM_THEMES } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import {
@@ -1374,22 +1370,16 @@ function Pricing() {
                   ) : null}
                 </div>
                 <p className={cn("mt-2 text-sm", hi ? "text-neutral-400" : "text-neutral-600")}>{plan.description}</p>
-<<<<<<< HEAD
-                <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <span className="text-5xl font-semibold tracking-tighter">{plan.priceFormatted.split(" ")[0]}</span>
-                  {plan.originalPriceFormatted && (
-                    <span className={cn("text-lg line-through", hi ? "text-neutral-500" : "text-neutral-400")}>
-                      {plan.originalPriceFormatted.split(" ")[0]}
-                    </span>
-                  )}
-                  <span className={cn("text-sm", hi ? "text-neutral-400" : "text-neutral-500")}>/month</span>
-=======
-                
                 <div className="mt-6">
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="text-5xl font-semibold tracking-tighter">
                       {isFree ? "₹0" : pricing.formattedMonthly}
                     </span>
+                    {billingCycle === "monthly" && plan.originalPriceFormatted && (
+                      <span className={cn("text-lg line-through", hi ? "text-neutral-500" : "text-neutral-400")}>
+                        {plan.originalPriceFormatted.split(" ")[0]}
+                      </span>
+                    )}
                     <span className={cn("text-sm", hi ? "text-neutral-400" : "text-neutral-500")}>/month</span>
                   </div>
                   {!isFree && billingCycle !== "monthly" && (
@@ -1397,9 +1387,8 @@ function Pricing() {
                       {pricing.billingText}
                     </p>
                   )}
->>>>>>> 0422db4 (payments)
                 </div>
-                {planDiscountPercent(plan) > 0 && (
+                {billingCycle === "monthly" && planDiscountPercent(plan) > 0 && (
                   <span className="mt-2 self-start rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
                     Save {planDiscountPercent(plan)}% · launch offer
                   </span>
